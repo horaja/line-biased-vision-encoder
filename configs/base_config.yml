@@ -1,0 +1,63 @@
+# Base configuration for SelectiveMagnoViT
+experiment:
+  name: "selective_magno_vit"
+  version: "v1.0"
+  seed: 42
+
+# Data paths - these will be overridden by environment variables or CLI args
+# NOTE: Update these paths to absolute paths for your cluster setup
+data:
+  raw_root: "/user_data/horaja/workspace/magno_stream_encoder/data/raw_dataset"
+  preprocessed_root: "/user_data/horaja/workspace/magno_stream_encoder/data/preprocessed"
+  magno_dir: "${data.preprocessed_root}/magno_images"
+  lines_dir: "${data.preprocessed_root}/line_drawings"
+  color_dir: "${data.preprocessed_root}/color_images"
+
+# Model architecture
+model:
+  patch_percentage: 0.4
+  img_size: 64
+  patch_size: 4
+  num_classes: 10
+  vit_model_name: "vit_tiny_patch16_224.augreg_in21k"
+  
+  # Patch selector parameters
+  selector:
+    threshold: 0.3
+    gaussian_std: 0.25
+
+# Training hyperparameters
+training:
+  epochs: 100
+  batch_size: 32
+  learning_rate: 1.0e-5
+  weight_decay: 0.1
+  patience: 20
+  num_workers: 4
+  
+  # Data augmentation
+  augmentation:
+    random_crop_scale: [0.8, 1.0]
+    random_horizontal_flip: true
+    color_jitter:
+      brightness: 0.2
+      contrast: 0.2
+
+# Preprocessing settings
+preprocessing:
+  line_drawing_style: "opensketch_style"
+  magno_size: 64
+  color_size: 256
+
+# Output directories
+output:
+  checkpoint_dir: "checkpoints"
+  results_dir: "results"
+  logs_dir: "logs"
+  tensorboard_dir: "logs/tensorboard"
+
+# Logging
+logging:
+  level: "INFO"
+  log_every_n_steps: 50
+  save_epoch_freq: 5
