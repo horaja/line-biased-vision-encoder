@@ -11,9 +11,6 @@
 #SBATCH --time=08:00:00
 #SBATCH --partition=gpu
 
-# Exit on error
-set -e
-
 echo "=========================================="
 echo "SLURM Job Information"
 echo "=========================================="
@@ -22,10 +19,12 @@ echo "Node: $HOSTNAME"
 echo "Start time: $(date)"
 echo "=========================================="
 
+module load cuda-12.1
+
 # Setup environment
 eval "$(mamba shell hook --shell bash)"
-mamba env update -f environment.yml 2>/dev/null || mamba env create -f environment.yml -y
 mamba activate drawings
+echo "Environment activated successfully"
 
 # Verify GPU
 nvidia-smi
@@ -35,7 +34,7 @@ cd $SLURM_SUBMIT_DIR
 
 # Run training
 python scripts/train.py \
-    --config configs/base_config.yaml \
+    --config configs/base_config.yml \
     --magno_dir "${MAGNO_DIR:-data/preprocessed/magno_images}" \
     --lines_dir "${LINES_DIR:-data/preprocessed/line_drawings}" \
     --output_dir "${OUTPUT_DIR:-checkpoints}" \

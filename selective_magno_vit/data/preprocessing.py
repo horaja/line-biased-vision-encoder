@@ -152,9 +152,9 @@ class InformativeDrawingsPreprocessor:
         netG.eval()
         logger.info("Model loaded successfully")
 
-        # Define image transform
-        transform = transforms.Compose([
-            transforms.Resize((256, 256)),
+        # Define transforms
+        # For magno images (keep at magno_size, e.g. 64x64)
+        magno_transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
@@ -178,28 +178,28 @@ class InformativeDrawingsPreprocessor:
                 logger.info(f"Processing image {i}/{len(image_files)}: {rel_path}")
 
             try:
-                # Load and transform image
+                # Load original image
                 img_pil = Image.open(img_path).convert('RGB')
-                img_tensor = transform(img_pil).unsqueeze(0).to(device)
 
-                # Generate line drawing
-                with torch.no_grad():
-                    line_tensor = netG(img_tensor)
-
-                # Save line drawing
-                line_output_dir = Path(output_lines_dir) / class_dir
-                line_output_dir.mkdir(parents=True, exist_ok=True)
-                line_image = transforms.ToPILImage()(line_tensor.squeeze(0).cpu())
-                line_path = line_output_dir / f"{img_name}_line.png"
-                line_image.save(line_path)
-
-                # Generate and save magno image
+                # Step 1: Generate magno image first
                 magno_output_dir = Path(output_magno_dir) / class_dir
                 magno_output_dir.mkdir(parents=True, exist_ok=True)
                 magno_array = create_magno_image(img_path, output_size=magno_size)
                 magno_image = Image.fromarray(magno_array)
                 magno_path = magno_output_dir / f"{img_name}_magno.png"
                 magno_image.save(magno_path)
+
+                # Step 2: Generate line drawing from the magno image (at 64x64)
+                magno_tensor = magno_transform(magno_image).unsqueeze(0).to(device)
+                with torch.no_grad():
+                    line_tensor = netG(magno_tensor)
+
+                # Save line drawing (same size as magno: 64x64)
+                line_output_dir = Path(output_lines_dir) / class_dir
+                line_output_dir.mkdir(parents=True, exist_ok=True)
+                line_image = transforms.ToPILImage()(line_tensor.squeeze(0).cpu())
+                line_path = line_output_dir / f"{img_name}_line.png"
+                line_image.save(line_path)
 
                 # Resize and save color image
                 color_output_dir = Path(output_color_dir) / class_dir

@@ -8,8 +8,6 @@ dependencies:
   - pytorch>=1.12.0
   - torchvision>=0.13.0
   - cudatoolkit=11.6
-  - mamba  # For faster package management
-  # Core dependencies - installed via mamba for speed
   - numpy>=1.21.0
   - pillow>=8.0.0
   - pyyaml>=5.4.0
@@ -26,5 +24,4 @@ dependencies:
   - ipykernel>=6.0.0
   - pip
   - pip:
-    # Only packages not available via conda
     - timm>=0.6.0
