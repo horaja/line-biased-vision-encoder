@@ -20,6 +20,7 @@ echo "Start time: $(date)"
 echo "=========================================="
 
 module load cuda-12.1
+module list
 
 # Setup environment
 eval "$(mamba shell hook --shell bash)"
