@@ -11,9 +11,6 @@
 #SBATCH --time=12:00:00
 #SBATCH --partition=gpu
 
-# Exit on error
-set -e
-
 echo "=========================================="
 echo "SLURM Job Information"
 echo "=========================================="
@@ -22,23 +19,9 @@ echo "Node: $HOSTNAME"
 echo "Start time: $(date)"
 echo "=========================================="
 
-# Setup environment
-echo "Initializing mamba..."
-set +e  # Disable exit on error temporarily
-eval "$(mamba shell hook --shell bash)" 2>&1
-HOOK_EXIT=$?
-set -e  # Re-enable exit on error
-echo "Mamba hook exit code: $HOOK_EXIT"
-
-echo "Updating/creating environment..."
-mamba env update -f environment.yml || mamba env create -f environment.yml -y
-
-echo "Activating environment..."
+eval "$(mamba shell hook --shell bash)"
 mamba activate drawings
 echo "Environment activated successfully"
-
-# Verify GPU
-nvidia-smi
 
 # Change to project directory
 cd $SLURM_SUBMIT_DIR

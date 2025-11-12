@@ -5,12 +5,51 @@ Preprocessing pipeline for generating line drawings and magno images.
 import os
 import sys
 import logging
-import subprocess
 from pathlib import Path
 from typing import Optional
-import shutil
+import cv2
+import numpy as np
+from PIL import Image
 
 logger = logging.getLogger(__name__)
+
+
+def create_magno_image(image_path, output_size=64):
+    """
+    Create a magno-channel image emphasizing low spatial frequencies.
+    Simulates magnocellular pathway with low-pass filtering and non-linear contrast response.
+
+    Args:
+        image_path: Path to input image
+        output_size: Output size for the magno image
+
+    Returns:
+        Magno image as numpy array (RGB)
+    """
+    # Read image
+    img = cv2.imread(str(image_path))
+    if img is None:
+        raise ValueError(f"Could not read image: {image_path}")
+
+    # Convert to grayscale (magno cells are achromatic)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    # Strong low-pass filtering (simulate large receptive fields)
+    magno = cv2.GaussianBlur(gray, (21, 21), 7.0)
+
+    # Downsample to output size (further removes high frequencies)
+    magno = cv2.resize(magno, (output_size, output_size),
+                       interpolation=cv2.INTER_AREA)
+
+    # Non-linear contrast response (enhance low contrast, saturate high)
+    magno = magno.astype(np.float32) / 255.0
+    magno = np.power(magno, 0.7)
+    magno = np.uint8(magno * 255)
+
+    # Convert to RGB for consistency
+    magno_rgb = cv2.cvtColor(magno, cv2.COLOR_GRAY2RGB)
+
+    return magno_rgb
 
 
 class InformativeDrawingsPreprocessor:
@@ -21,7 +60,7 @@ class InformativeDrawingsPreprocessor:
     def __init__(
         self,
         informative_drawings_path: str = "third_party/informative-drawings",
-        model_name: str = "opensketch_style"
+        model_name: str = "contour_style"
     ):
         """
         Args:
@@ -58,7 +97,7 @@ class InformativeDrawingsPreprocessor:
     ):
         """
         Process a dataset to generate line drawings and magno images.
-        
+
         Args:
             input_dir: Directory containing input images
             output_magno_dir: Directory to save magno images
@@ -68,219 +107,112 @@ class InformativeDrawingsPreprocessor:
             color_size: Size for color images
             use_gpu: Whether to use GPU for processing
         """
+        import torch
+        import torchvision.transforms as transforms
+
         input_path = Path(input_dir)
         if not input_path.exists():
             raise FileNotFoundError(f"Input directory not found: {input_dir}")
-        
+
         # Create output directories
         for out_dir in [output_magno_dir, output_lines_dir, output_color_dir]:
             Path(out_dir).mkdir(parents=True, exist_ok=True)
-        
+
         logger.info(f"Processing images from {input_dir}")
         logger.info(f"Outputs: magno={output_magno_dir}, lines={output_lines_dir}, color={output_color_dir}")
         logger.info(f"Configuration: magno_size={magno_size}x{magno_size}, color_size={color_size}x{color_size}")
-        
-        # Build the command
-        test_script = self.repo_path / "test_magno.py"
-        
-        # Check if test_magno.py exists, if not we need to create it
-        if not test_script.exists():
-            logger.warning(f"test_magno.py not found in {self.repo_path}")
-            logger.info("Creating test_magno.py wrapper...")
-            self._create_test_magno_script()
-        
-        cmd = [
-            sys.executable,
-            str(test_script),
-            "--name", self.model_name,
-            "--dataroot", str(input_path),
-            "--magno_output_dir", output_magno_dir,
-            "--line_drawing_output_dir", output_lines_dir,
-            "--color_output_dir", output_color_dir,
-            "--magno_size", str(magno_size),
-            "--color_size", str(color_size),
-        ]
-        
-        if use_gpu:
-            cmd.append("--gpu_ids")
-            cmd.append("0")
-        else:
-            cmd.append("--gpu_ids")
-            cmd.append("-1")
-        
-        # Run the preprocessing
+
+        # Add informative-drawings to path and import modules
+        sys.path.insert(0, str(self.repo_path))
         try:
-            logger.info(f"Running command: {' '.join(cmd)}")
-            result = subprocess.run(
-                cmd,
-                cwd=str(self.repo_path),
-                check=True,
-                capture_output=True,
-                text=True
-            )
-            logger.info("Preprocessing completed successfully")
-            logger.debug(f"Output: {result.stdout}")
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Preprocessing failed with error code {e.returncode}")
-            logger.error(f"Error output: {e.stderr}")
+            from model import Generator
+        except ImportError as e:
+            logger.error(f"Failed to import informative-drawings modules: {e}")
+            logger.error("Make sure the informative-drawings submodule is initialized")
             raise
-    
-    def _create_test_magno_script(self):
-        """
-        Create a custom test_magno.py script if it doesn't exist.
-        This is a wrapper around the informative-drawings test.py script
-        that adds support for magno image output.
-        """
-        test_magno_content = '''"""
-Test script for generating line drawings and magno images.
-Extended from the original test.py to support magno processing.
-"""
 
-import os
-import sys
-from pathlib import Path
-from options.test_options import TestOptions
-from data import create_dataset
-from models import create_model
-from util import html
-from PIL import Image
-import torchvision.transforms as transforms
-import torch
-import cv2
-import numpy as np
+        # Load the line drawing model
+        logger.info(f"Loading model: {self.model_name}")
+        device = torch.device('cuda:0' if use_gpu and torch.cuda.is_available() else 'cpu')
 
-def create_magno_image(image_path, output_size=64):
-    """
-    Create a magno-channel-like image using simple preprocessing.
-    This is a placeholder - you should replace with your actual magno processing.
-    """
-    # Read image
-    img = cv2.imread(str(image_path))
-    if img is None:
-        raise ValueError(f"Could not read image: {image_path}")
-    
-    # Convert to grayscale
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    
-    # Apply Gaussian blur to simulate magno channel
-    magno = cv2.GaussianBlur(gray, (5, 5), 2.0)
-    
-    # Apply edge detection
-    edges = cv2.Canny(magno, 50, 150)
-    
-    # Combine
-    magno = cv2.addWeighted(magno, 0.7, edges, 0.3, 0)
-    
-    # Resize
-    magno = cv2.resize(magno, (output_size, output_size))
-    
-    # Convert to RGB for consistency
-    magno_rgb = cv2.cvtColor(magno, cv2.COLOR_GRAY2RGB)
-    
-    return magno_rgb
+        # Model configuration (from informative-drawings test.py defaults)
+        input_nc = 3
+        output_nc = 1
+        n_blocks = 3  # Default from test.py - matches pretrained checkpoints
 
-if __name__ == '__main__':
-    opt = TestOptions().parse()
-    
-    # Add custom options for our use case
-    opt.num_threads = 0
-    opt.batch_size = 1
-    opt.serial_batches = True
-    opt.no_flip = True
-    opt.display_id = -1
-    
-    # Get custom output directories from command line
-    magno_output_dir = None
-    line_drawing_output_dir = None
-    color_output_dir = None
-    magno_size = 64
-    color_size = 256
-    
-    for i, arg in enumerate(sys.argv):
-        if arg == '--magno_output_dir' and i + 1 < len(sys.argv):
-            magno_output_dir = sys.argv[i + 1]
-        elif arg == '--line_drawing_output_dir' and i + 1 < len(sys.argv):
-            line_drawing_output_dir = sys.argv[i + 1]
-        elif arg == '--color_output_dir' and i + 1 < len(sys.argv):
-            color_output_dir = sys.argv[i + 1]
-        elif arg == '--magno_size' and i + 1 < len(sys.argv):
-            magno_size = int(sys.argv[i + 1])
-        elif arg == '--color_size' and i + 1 < len(sys.argv):
-            color_size = int(sys.argv[i + 1])
-    
-    # Create output directories
-    for out_dir in [magno_output_dir, line_drawing_output_dir, color_output_dir]:
-        if out_dir:
-            os.makedirs(out_dir, exist_ok=True)
-    
-    dataset = create_dataset(opt)
-    model = create_model(opt)
-    model.setup(opt)
-    
-    if opt.eval:
-        model.eval()
-    
-    print(f'Processing {len(dataset)} images...')
-    
-    for i, data in enumerate(dataset):
-        if i >= opt.num_test:
-            break
-        
-        model.set_input(data)
-        model.test()
-        visuals = model.get_current_visuals()
-        img_path = model.get_image_paths()
-        
-        # Get the image name
-        img_name = Path(img_path[0]).stem
-        
-        # Get class directory structure
-        relative_path = Path(img_path[0]).relative_to(opt.dataroot)
-        class_dir = relative_path.parent
-        
-        print(f'Processing image {i+1}/{len(dataset)}: {img_name}')
-        
-        # Save line drawing
-        if line_drawing_output_dir and 'fake_B' in visuals:
-            line_output_class_dir = Path(line_drawing_output_dir) / class_dir
-            line_output_class_dir.mkdir(parents=True, exist_ok=True)
+        # Load generator
+        netG = Generator(input_nc, output_nc, n_blocks)
+        checkpoint_path = self.repo_path / "checkpoints" / self.model_name / "netG_A_latest.pth"
 
-            line_tensor = visuals['fake_B']
-            line_image = transforms.ToPILImage()(line_tensor.squeeze(0).cpu())
-            line_path = line_output_class_dir / f"{img_name}_line.png"
-            line_image.save(line_path)
-            print(f'  Saved line drawing: {line_path.name} (size: {line_image.size})')
-        
-        # Save color image
-        if color_output_dir:
-            color_output_class_dir = Path(color_output_dir) / class_dir
-            color_output_class_dir.mkdir(parents=True, exist_ok=True)
+        if not checkpoint_path.exists():
+            raise FileNotFoundError(f"Model checkpoint not found: {checkpoint_path}")
 
-            color_image = Image.open(img_path[0]).convert('RGB')
-            color_image = color_image.resize((color_size, color_size), Image.LANCZOS)
-            color_path = color_output_class_dir / f"{img_name}_color.png"
-            color_image.save(color_path)
-            print(f'  Saved color image: {color_path.name} (size: {color_image.size})')
-        
-        # Create and save magno image
-        if magno_output_dir:
-            magno_output_class_dir = Path(magno_output_dir) / class_dir
-            magno_output_class_dir.mkdir(parents=True, exist_ok=True)
+        netG.load_state_dict(torch.load(checkpoint_path, map_location=device))
+        netG.to(device)
+        netG.eval()
+        logger.info("Model loaded successfully")
 
-            magno_array = create_magno_image(img_path[0], output_size=magno_size)
-            magno_image = Image.fromarray(magno_array)
-            magno_path = magno_output_class_dir / f"{img_name}_magno.png"
-            magno_image.save(magno_path)
-            print(f'  Saved magno image: {magno_path.name} (size: {magno_image.size})')
-    
-    print('Processing complete!')
-'''
-        
-        output_path = self.repo_path / "test_magno.py"
-        with open(output_path, 'w') as f:
-            f.write(test_magno_content)
-        
-        logger.info(f"Created test_magno.py at {output_path}")
+        # Define image transform
+        transform = transforms.Compose([
+            transforms.Resize((256, 256)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
+
+        # Find all images
+        image_extensions = {'.jpg', '.jpeg', '.png', '.JPEG', '.JPG', '.PNG'}
+        image_files = []
+        for ext in image_extensions:
+            image_files.extend(input_path.rglob(f'*{ext}'))
+
+        logger.info(f"Found {len(image_files)} images to process")
+
+        # Process each image
+        for i, img_path in enumerate(image_files, 1):
+            # Get relative path to maintain directory structure
+            rel_path = img_path.relative_to(input_path)
+            img_name = img_path.stem
+            class_dir = rel_path.parent
+
+            if i % 100 == 0 or i == 1:
+                logger.info(f"Processing image {i}/{len(image_files)}: {rel_path}")
+
+            try:
+                # Load and transform image
+                img_pil = Image.open(img_path).convert('RGB')
+                img_tensor = transform(img_pil).unsqueeze(0).to(device)
+
+                # Generate line drawing
+                with torch.no_grad():
+                    line_tensor = netG(img_tensor)
+
+                # Save line drawing
+                line_output_dir = Path(output_lines_dir) / class_dir
+                line_output_dir.mkdir(parents=True, exist_ok=True)
+                line_image = transforms.ToPILImage()(line_tensor.squeeze(0).cpu())
+                line_path = line_output_dir / f"{img_name}_line.png"
+                line_image.save(line_path)
+
+                # Generate and save magno image
+                magno_output_dir = Path(output_magno_dir) / class_dir
+                magno_output_dir.mkdir(parents=True, exist_ok=True)
+                magno_array = create_magno_image(img_path, output_size=magno_size)
+                magno_image = Image.fromarray(magno_array)
+                magno_path = magno_output_dir / f"{img_name}_magno.png"
+                magno_image.save(magno_path)
+
+                # Resize and save color image
+                color_output_dir = Path(output_color_dir) / class_dir
+                color_output_dir.mkdir(parents=True, exist_ok=True)
+                color_image = img_pil.resize((color_size, color_size), Image.LANCZOS)
+                color_path = color_output_dir / f"{img_name}_color.png"
+                color_image.save(color_path)
+
+            except Exception as e:
+                logger.error(f"Failed to process {img_path}: {e}")
+                continue
+
+        logger.info("Preprocessing completed successfully")
 
 
 def preprocess_imagenette(
@@ -288,7 +220,7 @@ def preprocess_imagenette(
     preprocessed_root: str,
     magno_size: int = 64,
     color_size: int = 256,
-    splits: list = None
+    splits: Optional[list] = None
 ):
     """
     Convenience function to preprocess the full ImageNette dataset.

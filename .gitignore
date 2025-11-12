@@ -35,6 +35,7 @@ datasets/
 *.npz
 *.pkl
 *.pickle
+*.tgz
 
 # Logs and outputs
 logs/
