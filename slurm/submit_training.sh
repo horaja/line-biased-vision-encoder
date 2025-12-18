@@ -23,9 +23,6 @@ echo "=========================================="
 module list
 
 # Setup environment
-which mamba
-mamba --version
-
 eval "$(mamba shell hook --shell bash)"
 mamba activate drawings
 echo "Environment activated successfully"
