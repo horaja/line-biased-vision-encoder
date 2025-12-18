@@ -71,7 +71,7 @@ slurm-*.out
 # Temporary
 tmp/
 temp/
-TODO.md
+
 
 # mamba
 mamba*
