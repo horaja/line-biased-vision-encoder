@@ -19,10 +19,13 @@ echo "Node: $HOSTNAME"
 echo "Start time: $(date)"
 echo "=========================================="
 
-module load cuda-12.1
+# module load cuda-12.1
 module list
 
 # Setup environment
+which mamba
+mamba --version
+
 eval "$(mamba shell hook --shell bash)"
 mamba activate drawings
 echo "Environment activated successfully"
@@ -33,13 +36,17 @@ nvidia-smi
 # Change to project directory
 cd $SLURM_SUBMIT_DIR
 
-# Run training
-python scripts/train.py \
+# Run training with unbuffered output
+python -u scripts/train.py \
     --config configs/base_config.yml \
     --magno_dir "${MAGNO_DIR:-data/preprocessed/magno_images}" \
     --lines_dir "${LINES_DIR:-data/preprocessed/line_drawings}" \
-    --output_dir "${OUTPUT_DIR:-checkpoints}" \
-    ${EXTRA_ARGS}
+    # --output_dir "${OUTPUT_DIR:-checkpoints}" \
+    --output_dir "checkpoints/baseline_100pct" \
+    --patch_percentage 1.0 \
+    --epochs 100
+
+mamba deactivate
 
 echo "=========================================="
 echo "Job completed at: $(date)"
