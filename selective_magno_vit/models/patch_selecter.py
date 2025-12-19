@@ -15,6 +15,8 @@ class SpatialThresholdSelector(nn.Module):
         patch_percentage: Fraction of patches to select (0, 1]
         threshold: Minimum weighted score for automatic selection
         gaussian_std: Standard deviation for Gaussian spatial weighting
+
+    Note these args must be treated like hyperparameters.
     """
     
     def __init__(
@@ -37,7 +39,7 @@ class SpatialThresholdSelector(nn.Module):
         Compute the center of mass for each line drawing.
         
         Args:
-            line_drawing: Tensor of shape (B, 1, H, W)
+            line_drawing: Tensor of shape (B, 1, H_LD, W_LD)
         
         Returns:
             Centers of shape (B, 2) with normalized coordinates [y, x] in [0, 1]
@@ -77,6 +79,8 @@ class SpatialThresholdSelector(nn.Module):
         
         Returns:
             Gaussian weights of shape (B, num_patches_h * num_patches_w)
+
+        Note: The args must be the height and width of color images.
         """
         B = centers.shape[0]
         device = centers.device
@@ -86,7 +90,7 @@ class SpatialThresholdSelector(nn.Module):
         x_patch = torch.linspace(0, 1, num_patches_w, device=device)
         grid_y, grid_x = torch.meshgrid(y_patch, x_patch, indexing='ij')
         
-        # Flatten grid coordinates (N, 2)
+        # Flatten grid coordinates (N, 2) - WHAT DOES THIS DO?
         grid_coords = torch.stack([grid_y.flatten(), grid_x.flatten()], dim=1)
         
         # Compute Gaussian weights for each batch item
