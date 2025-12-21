@@ -30,13 +30,15 @@ echo "Environment activated successfully"
 # Change to project directory
 cd $SLURM_SUBMIT_DIR
 
+$PP = 1.0
+
 # Run training with unbuffered output
 python -u scripts/train.py \
     --config configs/base_config.yml \
     --color_dir "${COLOR_DIR:-data/preprocessed/color_images}" \
     --lines_dir "${LINES_DIR:-data/preprocessed/line_drawings}" \
-    --output_dir "checkpoints/baseline_100pct" \
-    --patch_percentage 1.0 \
+    --output_dir "checkpoints/p${PP}" \
+    --patch_percentage "$PP" \
     --epochs 100
 
 mamba deactivate
