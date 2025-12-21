@@ -19,16 +19,13 @@ echo "Node: $HOSTNAME"
 echo "Start time: $(date)"
 echo "=========================================="
 
-# module load cuda-12.1
 module list
 
 # Setup environment
 eval "$(mamba shell hook --shell bash)"
-mamba activate drawings
+mamba activate vla 
 echo "Environment activated successfully"
 
-# Verify GPU
-nvidia-smi
 
 # Change to project directory
 cd $SLURM_SUBMIT_DIR
