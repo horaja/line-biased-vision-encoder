@@ -80,6 +80,8 @@ def main():
         config.set('data.lines_dir', args.lines_dir)
     if args.output_dir:
         config.set('output.checkpoint_dir', args.output_dir)
+        run_name = Path(args.output_dir).name
+        config.set('output.tensorboard_dir', f"logs/tensorboard/{run_name}")
     if args.patch_percentage:
         config.set('model.patch_percentage', args.patch_percentage)
     if args.batch_size:
