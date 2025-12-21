@@ -130,11 +130,7 @@ def get_dataloaders(config):
     """
     # Define transforms
     train_transform = transforms.Compose([
-        transforms.RandomResizedCrop(
-            config.get('model.color_img_size'),
-            scale=tuple(config.get('training.augmentation.random_crop_scale'))
-        ),
-        transforms.RandomHorizontalFlip() if config.get('training.augmentation.random_horizontal_flip') else transforms.Lambda(lambda x: x),
+        transforms.Resize((config.get('model.color_img_size'), config.get('model.color_img_size'))),
         transforms.ColorJitter(**config.get('training.augmentation.color_jitter')),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])

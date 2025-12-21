@@ -1,4 +1,4 @@
-- [ ] Investigate the implications of multinomial sampling.
+- [x] Investigate the implications of multinomial sampling.
   - Figure out how to semi-reliably visualize selected indices of collection of images
     - worst case: just run multinomial sampling many times, take average or whatever.
 - [x] Update `SelectiveMagnoViT` to use projected indices.
@@ -6,5 +6,6 @@
 - [x] Fix configuration loading in `scripts/train.py` and `selective_magno_vit/data/dataset.py`.
 - [x] Update `visualizer.py` and `evaluator.py` and trainer
 - [x] Update transforms, visualize_results, evaluate.
-- [ ] Update all slurm scripts
+- [x] Update all slurm scripts
 - [ ] Update tests in `tests/`.
+- [x] Remove spatial transforms

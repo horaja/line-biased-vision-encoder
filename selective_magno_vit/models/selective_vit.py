@@ -125,7 +125,7 @@ class SelectiveMagnoViT(nn.Module):
             Classification logits of shape (B, num_classes)
         """
         # Step 1: Score patches based on line drawing density
-        patch_scores = self.scorer(line_drawing)  # (B, num_patches)
+        patch_scores, centers = self.scorer(line_drawing)  # (B, num_patches)
 
         # Step 2: Extract all patches from the color image
         all_patches = self.vit.patch_embed(color_image)  # (B, num_patches, embed_dim)
@@ -136,7 +136,7 @@ class SelectiveMagnoViT(nn.Module):
             all_patches,
             self.vit.pos_embed,
             patch_scores,
-            line_drawing
+            centers
         )  # (B, k, embed_dim) where k = num_patches * patch_percentage
 
         # Step 4: Prepare [CLS] token with its positional embedding
@@ -181,42 +181,12 @@ class SelectiveMagnoViT(nn.Module):
             of selected patches
         """
         # Score patches
-        patch_scores = self.scorer(line_drawing)
+        patch_scores, centers = self.scorer(line_drawing)
 
-        # Calculate number of patches to select
-        k = max(1, int(patch_scores.shape[1] * self.patch_percentage))
-
-        # Get top-k indices (simple version without spatial weighting)
-        _, indices = torch.topk(patch_scores, k=k, dim=1)
+        # Get the multinomial sampled indices
+        indices = self.selector.get_indices(patch_scores, centers)
 
         return indices
-
-    # TODO: Ensure this logic works with softmax-ed probabilities.
-    @torch.no_grad()
-    def get_patch_importance_map(self, line_drawing: torch.Tensor) -> torch.Tensor:
-        """
-        Get 2D importance map showing patch scores.
-
-        Useful for visualization to understand which regions of the image
-        are considered important.
-
-        Args:
-            line_drawing: Line drawing tensor of shape (B, 1, H, W)
-
-        Returns:
-            Importance map of shape (B, 1, H', W') where H' = H/patch_size,
-            W' = W/patch_size
-        """
-        # Get patch scores
-        patch_scores = self.scorer(line_drawing)  # (B, num_patches)
-
-        # Reshape to 2D grid
-        num_patches_per_side = int(self.num_patches ** 0.5)
-        importance_map = patch_scores.view(
-            -1, 1, num_patches_per_side, num_patches_per_side
-        )
-
-        return importance_map
 
     def get_num_selected_patches(self) -> int:
         """Get the number of patches that will be selected."""

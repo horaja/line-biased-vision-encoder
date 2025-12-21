@@ -90,6 +90,41 @@ class SpatialThresholdSelector(nn.Module):
         """
         projected_indices = indices
         return projected_indices
+
+    def get_indices(self, scores : torch.Tensor, centers : torch.Tensor) -> torch.Tensor:
+        """
+        Generate selected indices using multinomial sampling and spatial bias.
+        Expose helper function for visualization and consistency.
+        
+        :param self
+        :param scores: patch importance scores of shape (B, N)
+        :type scores: torch.Tensor
+        :param centers: center of gravities of items in batch of shape (B, 2)
+        :type centers: torch.Tensor
+        :return: projected selected indices of shape (B, k)
+        :rtype: Any
+        """
+        B, N = scores.shape()
+        k = max(1, int(N * self.patch_percentage)) # k : number of patches to select
+        
+        # Compute spatial weights
+        num_patches_side = int(np.sqrt(N))
+        if num_patches_side ** 2 != N:
+            raise ValueError(f"Number of patches {N} is not a perfect square")
+        
+        gaussian_weights = self._create_gaussian_weights(
+            num_patches_side, num_patches_side, centers
+        ) # spatial prior probability distribution
+
+        # Combine scores with spatial bias
+        joint = scores * gaussian_weights # (B, N)
+        joint = joint / (joint.sum(dim=1, keepdim=True) + 1e-8) # renormalize per batch
+
+        # Select patches
+        selected_indices = torch.multinomial(joint, num_samples=k, replacement=False) # (B, k)
+
+        return self._project_indices(selected_indices)
+
     
     def forward(
         self,
@@ -110,26 +145,10 @@ class SpatialThresholdSelector(nn.Module):
         Returns:
             Selected patches with positional embeddings added, shape (B, k, D)
         """
-        B, N, D = color_patches.shape
-        k = max(1, int(N * self.patch_percentage)) # k : number of patches to select
+        B, _, D = color_patches.shape
         
-        # Compute spatial weights
-        num_patches_side = int(np.sqrt(N))
-        if num_patches_side ** 2 != N:
-            raise ValueError(f"Number of patches {N} is not a perfect square")
-
-        gaussian_weights = self._create_gaussian_weights(
-            num_patches_side, num_patches_side, centers
-        ) # spatial prior probability distribution
-        
-        # Combine scores with spatial bias
-        joint = scores * gaussian_weights # (B, N)
-        joint = joint / (joint.sum(dim=1, keepdim=True) + 1e-8) # renormalize per batch
-        
-        # Select patches
-        selected_indices = torch.multinomial(joint, num_samples=k, replacement=False) # (B, k)
-        
-        projected_indices = self._project_indices(selected_indices)
+        # Get projected selected indices
+        projected_indices = self.get_indices(scores, centers)
 
         # Gather selected patches
         indices_expanded = projected_indices.unsqueeze(-1).expand(-1, -1, D)
@@ -138,7 +157,7 @@ class SpatialThresholdSelector(nn.Module):
         # Gather positional embeddings (skip CLS token)
         pos_embed_patches = vit_positional_embedding[:, 1:, :]
         pos_embed_expanded = pos_embed_patches.expand(B, -1, -1)
-        pos_embed_indices = selected_indices.unsqueeze(-1).expand(-1, -1, D)
+        pos_embed_indices = projected_indices.unsqueeze(-1).expand(-1, -1, D)
         selected_pos_embed = torch.gather(pos_embed_expanded, 1, pos_embed_indices)
         
         # Add positional embeddings
