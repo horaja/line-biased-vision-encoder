@@ -72,6 +72,8 @@ slurm-*.out
 tmp/
 temp/
 
-
 # mamba
 mamba*
+
+# gemini-cli
+GEMINI.md
