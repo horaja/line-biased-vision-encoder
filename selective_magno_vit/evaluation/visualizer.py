@@ -52,13 +52,14 @@ class PatchSelectionVisualizer:
         selected_indices = self.model.get_selected_patch_indices(line_drawing)
 
         # Get importance scores
-        patch_scores = self.model.scorer(line_drawing)
+        patch_scores, patch_centers = self.model.scorer(line_drawing)
 
         # Convert to numpy for plotting
         color_np = color_image[0].cpu().permute(1, 2, 0).numpy()
         line_np = line_drawing[0, 0].cpu().numpy()
         selected_indices_np = selected_indices[0].cpu().numpy()
         scores_np = patch_scores[0].cpu().numpy()
+        centers_np = patch_centers[0].cpu().numpy()
 
         # Denormalize color image for visualization
         mean = np.array([0.485, 0.456, 0.406])
@@ -67,17 +68,14 @@ class PatchSelectionVisualizer:
         color_np = np.clip(color_np, 0, 1)
 
         # Calculate patch grid
-        # TODO: COLOR PATCH GRID (CHANGE MODEL MEMBER CALL)
         color_img_size = color_np.shape[0]
         color_patch_size = self.model.color_patch_size
         num_color_patches_per_side = color_img_size // color_patch_size
 
-        # TODO: LD PATCH GRID (CHANGE MODEL MEMBER CALL)
         line_img_size = line_np.shape[0]
         line_patch_size = self.model.ld_patch_size
         num_line_patches_per_side = line_img_size // line_patch_size
         # Reshape scores to 2D grid
-        # TODO: WORK FROM LD PATCH GRID
         scores_2d = scores_np.reshape(num_line_patches_per_side, num_line_patches_per_side)
 
         # Create figure
@@ -108,7 +106,6 @@ class PatchSelectionVisualizer:
         ax4.imshow(color_np)
 
         # Draw all patch boundaries (light)
-        # TODO: ALL 'num_patches_per_sid' SHOULD WORK FROM COLOR GRID
         for i in range(num_color_patches_per_side + 1):
             ax4.axhline(y=i * color_patch_size - 0.5, color='gray', linewidth=0.5, alpha=0.3)
             ax4.axvline(x=i * color_patch_size - 0.5, color='gray', linewidth=0.5, alpha=0.3)
@@ -127,6 +124,32 @@ class PatchSelectionVisualizer:
                 facecolor='none'
             )
             ax4.add_patch(rect)
+
+        # cog_np is [y, x] in normalized coordinates [0, 1]
+        cog_y_norm, cog_x_norm = centers_np
+        
+        # Map to Color Image patch grid indices
+        cog_patch_row = int(cog_y_norm * num_color_patches_per_side)
+        cog_patch_col = int(cog_x_norm * num_color_patches_per_side)
+        
+        # Clamp to ensure it stays within bounds
+        cog_patch_row = max(0, min(cog_patch_row, num_color_patches_per_side - 1))
+        cog_patch_col = max(0, min(cog_patch_col, num_color_patches_per_side - 1))
+        
+        # Calculate pixel coordinates for the CoG rect
+        cog_rect_y = cog_patch_row * color_patch_size
+        cog_rect_x = cog_patch_col * color_patch_size
+        
+        cog_rect = patches.Rectangle(
+            (cog_rect_x - 0.5, cog_rect_y - 0.5),
+            color_patch_size,
+            color_patch_size,
+            linewidth=3,        # Thicker
+            edgecolor='red',    # Distinct color (Red)
+            facecolor='none',
+            linestyle='--'      # Dashed style
+        )
+        ax4.add_patch(cog_rect)
 
         num_selected = len(selected_indices_np)
         total_patches = num_color_patches_per_side ** 2
