@@ -120,7 +120,11 @@ def main():
         selector_config=config.get('model.selector')
     ).to(device)
     
-    logger.info(f"Model created with {sum(p.numel() for p in model.parameters())} parameters")
+    # Log the parameter counts to confirm
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    logger.info(f"Total Params: {total_params:,}")
+    logger.info(f"Trainable Params: {trainable_params:,}")
     
     # Create trainer
     trainer = Trainer(
