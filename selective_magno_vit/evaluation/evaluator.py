@@ -20,7 +20,8 @@ from ..utils.metrics import (
     compute_topk_accuracy,
     compute_confusion_matrix,
     compute_per_class_accuracy,
-    compute_precision_recall_f1
+    compute_precision_recall_f1,
+    compute_gflops
 )
 
 logger = logging.getLogger(__name__)
@@ -85,6 +86,10 @@ class ModelEvaluator:
 
         criterion = nn.CrossEntropyLoss()
 
+        # Calculate gflops
+        gflops = compute_gflops(self.model, self.device)
+        logger.info(f"Model Efficiency: {gflops:.4f} GFLOPs per image")
+
         # Iterate through dataset
         progress_bar = tqdm(dataloader, desc="Evaluating")
         for batch in progress_bar:
@@ -117,7 +122,8 @@ class ModelEvaluator:
         results = {
             'loss': avg_loss,
             'accuracy': accuracy,
-            'total_samples': total_samples
+            'total_samples': total_samples,
+            'gflops': gflops
         }
 
         # Top-k accuracy

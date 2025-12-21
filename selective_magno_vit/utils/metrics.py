@@ -6,6 +6,7 @@ import torch
 import numpy as np
 from typing import Tuple, List, Optional
 from collections import defaultdict
+from fvcore.nn import FlopCountAnalysis
 
 
 class MetricTracker:
@@ -180,6 +181,39 @@ def compute_precision_recall_f1(
 
     return precision, recall, f1_score
 
+def compute_gflops(
+    model : torch.nn.Model,
+    device : torch.device
+) -> float:
+    """
+    Compute the GFLOPs (Giga Floating Point Operations) for a single forward pass.
+    
+    :param model: The model to profile
+    :type model: torch.nn.Model
+    :param device: The device to run on
+    :type device: torch.device
+    :return: GFLOPs count as a float
+    :rtype: float
+    """
+
+    was_training = model.training
+    model.eval()
+
+    color_size = model.color_img_size
+    ld_size = model.ld_img_size
+
+    dummy_color = torch.randn(1, 3, color_size, color_size).to(device)
+    dummy_ld = torch.randn(1, 1, ld_size, ld_size).to(device)
+
+    flops = FlopCountAnalysis(model, (dummy_color, dummy_ld))
+
+    flops.unsupported_ops_warnings(False)
+
+    gflops = flops.total() / 1e9
+
+    model.train(was_training)
+
+    return gflops
 
 class AverageMeter:
     """
