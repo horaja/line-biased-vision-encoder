@@ -104,7 +104,7 @@ class SpatialThresholdSelector(nn.Module):
         :return: projected selected indices of shape (B, k)
         :rtype: Any
         """
-        B, N = scores.shape()
+        B, N = scores.shape
         k = max(1, int(N * self.patch_percentage)) # k : number of patches to select
         
         # Compute spatial weights

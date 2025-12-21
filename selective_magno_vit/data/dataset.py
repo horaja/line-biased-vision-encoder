@@ -101,6 +101,7 @@ class ImageNetteDataset(Dataset):
             color_image = transforms.ToTensor()(color_image)
         
         # Line drawing: invert and convert to tensor
+        # TODO: add correct resizing
         line_drawing = transforms.ToTensor()(line_drawing)
         line_drawing = 1.0 - line_drawing  # Invert so lines are white on black
         
