@@ -120,15 +120,15 @@ class Trainer:
 
         for batch_idx, batch in enumerate(progress_bar):
             # Move data to device
-            magno_images = batch['magno_image'].to(self.device)
+            color_images = batch['color_image'].to(self.device)
             line_drawings = batch['line_drawing'].to(self.device)
             labels = batch['label'].to(self.device)
 
-            batch_size = magno_images.size(0)
+            batch_size = color_images.size(0)
 
             # Forward pass
             self.optimizer.zero_grad()
-            outputs = self.model(magno_images, line_drawings)
+            outputs = self.model(color_images, line_drawings)
             loss = self.criterion(outputs, labels)
 
             # Backward pass
@@ -171,14 +171,14 @@ class Trainer:
         with torch.no_grad():
             for batch in progress_bar:
                 # Move data to device
-                magno_images = batch['magno_image'].to(self.device)
+                color_images = batch['color_image'].to(self.device)
                 line_drawings = batch['line_drawing'].to(self.device)
                 labels = batch['label'].to(self.device)
-
-                batch_size = magno_images.size(0)
+                
+                batch_size = color_images.size(0)
 
                 # Forward pass
-                outputs = self.model(magno_images, line_drawings)
+                outputs = self.model(color_images, line_drawings)
                 loss = self.criterion(outputs, labels)
 
                 # Compute metrics
@@ -260,12 +260,7 @@ class Trainer:
                 self.best_val_accuracy = val_accuracy
                 self.patience_counter = 0
                 self.logger.info(f"  -> New best model! Val Accuracy: {val_accuracy:.4f}")
-            else:
-                self.patience_counter += 1
-
-            # Save checkpoint
-            save_freq = self.config.get('logging.save_epoch_freq', 5)
-            if (epoch + 1) % save_freq == 0 or is_best:
+                # Save checkpoint
                 self.checkpoint_manager.save_checkpoint(
                     model=self.model,
                     optimizer=self.optimizer,
@@ -275,6 +270,8 @@ class Trainer:
                     is_best=is_best,
                     extra_info={'train_metrics': train_metrics}
                 )
+            else:
+                self.patience_counter += 1
 
             # Early stopping
             if self.patience_counter >= self.patience:

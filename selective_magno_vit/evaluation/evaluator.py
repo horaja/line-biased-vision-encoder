@@ -89,17 +89,17 @@ class ModelEvaluator:
         progress_bar = tqdm(dataloader, desc="Evaluating")
         for batch in progress_bar:
             # Move data to device
-            magno_images = batch['magno_image'].to(self.device)
+            color_images = batch['color_image'].to(self.device)
             line_drawings = batch['line_drawing'].to(self.device)
             labels = batch['label'].to(self.device)
 
             # Forward pass
-            outputs = self.model(magno_images, line_drawings)
+            outputs = self.model(color_images, line_drawings)
             loss = criterion(outputs, labels)
 
             # Store results
-            total_loss += loss.item() * magno_images.size(0)
-            total_samples += magno_images.size(0)
+            total_loss += loss.item() * color_images.size(0)
+            total_samples += color_images.size(0)
 
             _, predicted = torch.max(outputs, 1)
             all_predictions.extend(predicted.cpu().numpy().tolist())
@@ -213,10 +213,10 @@ class ModelEvaluator:
 
         progress_bar = tqdm(dataloader, desc="Predicting")
         for batch in progress_bar:
-            magno_images = batch['magno_image'].to(self.device)
+            color_images = batch['color_image'].to(self.device)
             line_drawings = batch['line_drawing'].to(self.device)
 
-            outputs = self.model(magno_images, line_drawings)
+            outputs = self.model(color_images, line_drawings)
             _, predicted = torch.max(outputs, 1)
 
             all_predictions.extend(predicted.cpu().numpy().tolist())
@@ -254,7 +254,6 @@ class ModelEvaluator:
             if samples_processed >= num_samples:
                 break
 
-            magno_images = batch['magno_image'].to(self.device)
             line_drawings = batch['line_drawing'].to(self.device)
 
             # Get selected patch indices

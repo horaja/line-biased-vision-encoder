@@ -29,8 +29,10 @@ class SelectiveMagnoViT(nn.Module):
     Args:
         patch_percentage: Fraction of patches to select (0, 1]
         num_classes: Number of output classes for classification
-        img_size: Input image size (assumes square images)
-        patch_size: Size of each patch
+        color_img_size: COLOR input image size (assumes square images)
+        color_patch_size: Size of each COLOR patch
+        ld_img_size: LINE DRAWING input image size (assumes square images)
+        ld_patch_size: Size of each LINE DRAWING patch
         vit_model_name: Name of the pre-trained ViT model from timm
         selector_config: Configuration dict for the patch selector
         embed_dim: Embedding dimension (if None, uses ViT default)

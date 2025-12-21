@@ -30,7 +30,7 @@ class PatchSelectionVisualizer:
     @torch.no_grad()
     def visualize_patch_selection(
         self,
-        magno_image: torch.Tensor,
+        color_image: torch.Tensor,
         line_drawing: torch.Tensor,
         save_path: Optional[str] = None,
         show: bool = True
@@ -39,13 +39,13 @@ class PatchSelectionVisualizer:
         Visualize which patches are selected for a given image.
 
         Args:
-            magno_image: Magno image tensor (1, 3, H, W)
+            color_image: Color image tensor (1, 3, H, W)
             line_drawing: Line drawing tensor (1, 1, H, W)
             save_path: Path to save figure (optional)
             show: Whether to show the figure
         """
         # Get model predictions
-        magno_image = magno_image.to(self.device)
+        color_image = color_image.to(self.device)
         line_drawing = line_drawing.to(self.device)
 
         # Get selected patch indices
@@ -55,33 +55,39 @@ class PatchSelectionVisualizer:
         patch_scores = self.model.scorer(line_drawing)
 
         # Convert to numpy for plotting
-        magno_np = magno_image[0].cpu().permute(1, 2, 0).numpy()
+        color_np = color_image[0].cpu().permute(1, 2, 0).numpy()
         line_np = line_drawing[0, 0].cpu().numpy()
         selected_indices_np = selected_indices[0].cpu().numpy()
         scores_np = patch_scores[0].cpu().numpy()
 
-        # Denormalize magno image for visualization
+        # Denormalize color image for visualization
         mean = np.array([0.485, 0.456, 0.406])
         std = np.array([0.229, 0.224, 0.225])
-        magno_np = std * magno_np + mean
-        magno_np = np.clip(magno_np, 0, 1)
+        color_np = std * color_np + mean
+        color_np = np.clip(color_np, 0, 1)
 
         # Calculate patch grid
-        img_size = magno_np.shape[0]
-        patch_size = self.model.patch_size
-        num_patches_per_side = img_size // patch_size
+        # TODO: COLOR PATCH GRID (CHANGE MODEL MEMBER CALL)
+        color_img_size = color_np.shape[0]
+        color_patch_size = self.model.color_patch_size
+        num_color_patches_per_side = color_img_size // color_patch_size
 
+        # TODO: LD PATCH GRID (CHANGE MODEL MEMBER CALL)
+        line_img_size = line_np.shape[0]
+        line_patch_size = self.model.ld_patch_size
+        num_line_patches_per_side = line_img_size // line_patch_size
         # Reshape scores to 2D grid
-        scores_2d = scores_np.reshape(num_patches_per_side, num_patches_per_side)
+        # TODO: WORK FROM LD PATCH GRID
+        scores_2d = scores_np.reshape(num_line_patches_per_side, num_line_patches_per_side)
 
         # Create figure
         fig = plt.figure(figsize=(16, 4))
         gs = GridSpec(1, 4, figure=fig, wspace=0.3)
 
-        # 1. Original magno image
+        # 1. Original color image
         ax1 = fig.add_subplot(gs[0])
-        ax1.imshow(magno_np)
-        ax1.set_title("Magno Image")
+        ax1.imshow(color_np)
+        ax1.set_title("Color Image")
         ax1.axis('off')
 
         # 2. Line drawing
@@ -99,22 +105,23 @@ class PatchSelectionVisualizer:
 
         # 4. Selected patches overlay
         ax4 = fig.add_subplot(gs[3])
-        ax4.imshow(magno_np)
+        ax4.imshow(color_np)
 
         # Draw all patch boundaries (light)
-        for i in range(num_patches_per_side + 1):
-            ax4.axhline(y=i * patch_size - 0.5, color='gray', linewidth=0.5, alpha=0.3)
-            ax4.axvline(x=i * patch_size - 0.5, color='gray', linewidth=0.5, alpha=0.3)
+        # TODO: ALL 'num_patches_per_sid' SHOULD WORK FROM COLOR GRID
+        for i in range(num_color_patches_per_side + 1):
+            ax4.axhline(y=i * color_patch_size - 0.5, color='gray', linewidth=0.5, alpha=0.3)
+            ax4.axvline(x=i * color_patch_size - 0.5, color='gray', linewidth=0.5, alpha=0.3)
 
         # Highlight selected patches
         for idx in selected_indices_np:
-            patch_y = (idx // num_patches_per_side) * patch_size
-            patch_x = (idx % num_patches_per_side) * patch_size
+            patch_y = (idx // num_color_patches_per_side) * color_patch_size
+            patch_x = (idx % num_color_patches_per_side) * color_patch_size
 
             rect = patches.Rectangle(
                 (patch_x - 0.5, patch_y - 0.5),
-                patch_size,
-                patch_size,
+                color_patch_size,
+                color_patch_size,
                 linewidth=2,
                 edgecolor='lime',
                 facecolor='none'
@@ -122,7 +129,7 @@ class PatchSelectionVisualizer:
             ax4.add_patch(rect)
 
         num_selected = len(selected_indices_np)
-        total_patches = num_patches_per_side ** 2
+        total_patches = num_color_patches_per_side ** 2
         ax4.set_title(f"Selected Patches ({num_selected}/{total_patches})")
         ax4.axis('off')
 
@@ -161,19 +168,19 @@ class PatchSelectionVisualizer:
         for batch in dataloader:
             if samples_visualized >= num_samples:
                 break
-
-            magno_images = batch['magno_image']
+            
+            color_images = batch['color_image']
             line_drawings = batch['line_drawing']
             labels = batch['label']
 
-            batch_size = magno_images.size(0)
+            batch_size = color_images.size(0)
             for i in range(min(batch_size, num_samples - samples_visualized)):
                 save_path = None
                 if save_dir:
                     save_path = save_dir / f"patch_selection_sample_{samples_visualized:03d}.png"
 
                 self.visualize_patch_selection(
-                    magno_images[i:i+1],
+                    color_images[i:i+1],
                     line_drawings[i:i+1],
                     save_path=save_path,
                     show=False

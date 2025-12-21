@@ -7,8 +7,8 @@
 #SBATCH --ntasks=1
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=16gb
-#SBATCH --time=02:00:00
+#SBATCH --mem=32gb
+#SBATCH --time=08:00:00
 #SBATCH --partition=gpu
 
 # Exit on error
@@ -23,7 +23,7 @@ echo "=========================================="
 
 # Setup environment
 eval "$(mamba shell hook --shell bash)"
-mamba activate drawings
+mamba activate vla 
 echo "Environment activated successfully"
 
 # Verify GPU
@@ -55,7 +55,7 @@ echo "Running evaluation..."
 python scripts/evaluate.py \
     --config configs/base_config.yml \
     --checkpoint "$CHECKPOINT" \
-    --magno_dir "${MAGNO_DIR:-data/preprocessed/magno_images}" \
+    --color_dir "${COLOR_DIR:-data/preprocessed/color_images}" \
     --lines_dir "${LINES_DIR:-data/preprocessed/line_drawings}" \
     --split "$SPLIT_NAME" \
     --output_dir "$RUN_DIR" \
@@ -83,7 +83,7 @@ else
         --config configs/base_config.yml \
         --checkpoint "$CHECKPOINT" \
         --results_file "$RESULTS_FILE" \
-        --magno_dir "${MAGNO_DIR:-data/preprocessed/magno_images}" \
+        --color_dir "${COLOR_DIR:-data/preprocessed/color_images}" \
         --lines_dir "${LINES_DIR:-data/preprocessed/line_drawings}" \
         --split "$SPLIT_NAME" \
         --output_dir "$RUN_DIR/visualizations" \

@@ -48,9 +48,9 @@ def parse_args():
         help="Path to evaluation results JSON file"
     )
     parser.add_argument(
-        "--magno_dir",
+        "--color_dir",
         type=str,
-        help="Override magno image directory"
+        help="Override color image directory"
     )
     parser.add_argument(
         "--lines_dir",
@@ -111,8 +111,8 @@ def main():
     config = Config(args.config)
 
     # Override with command line arguments
-    if args.magno_dir:
-        config.set('data.magno_dir', args.magno_dir)
+    if args.color_dir:
+        config.set('data.color_dir', args.color_dir)
     if args.lines_dir:
         config.set('data.lines_dir', args.lines_dir)
 
@@ -127,13 +127,13 @@ def main():
 
     # Load dataset
     val_transform = transforms.Compose([
-        transforms.Resize((config.get('model.img_size'), config.get('model.img_size'))),
+        transforms.Resize((config.get('model.color_img_size'), config.get('model.color_img_size'))),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
     dataset = ImageNetteDataset(
-        magno_root=config.get('data.magno_dir'),
+        color_root=config.get('data.color_dir'),
         lines_root=config.get('data.lines_dir'),
         split=args.split,
         transform=val_transform
@@ -154,8 +154,10 @@ def main():
     model = SelectiveMagnoViT(
         patch_percentage=config.get('model.patch_percentage'),
         num_classes=num_classes,
-        img_size=config.get('model.img_size'),
-        patch_size=config.get('model.patch_size'),
+        color_img_size=config.get('model.color_img_size'),
+        color_patch_size=config.get('model.color_patch_size'),
+        ld_img_size=config.get('model.ld_img_size'),
+        ld_patch_size=config.get('model.ld_patch_size'),
         vit_model_name=config.get('model.vit_model_name'),
         selector_config=config.get('model.selector')
     ).to(device)

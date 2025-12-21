@@ -33,9 +33,8 @@ cd $SLURM_SUBMIT_DIR
 # Run training with unbuffered output
 python -u scripts/train.py \
     --config configs/base_config.yml \
-    --magno_dir "${MAGNO_DIR:-data/preprocessed/magno_images}" \
+    --color_dir "${COLOR_DIR:-data/preprocessed/color_images}" \
     --lines_dir "${LINES_DIR:-data/preprocessed/line_drawings}" \
-    # --output_dir "${OUTPUT_DIR:-checkpoints}" \
     --output_dir "checkpoints/baseline_100pct" \
     --patch_percentage 1.0 \
     --epochs 100
