@@ -182,7 +182,7 @@ def compute_precision_recall_f1(
     return precision, recall, f1_score
 
 def compute_gflops(
-    model : torch.nn.Model,
+    model : torch.nn.Module,
     device : torch.device
 ) -> float:
     """
