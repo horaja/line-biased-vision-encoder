@@ -74,9 +74,26 @@ class SpatialThresholdSelector(nn.Module):
         
         return weights
     
+    def _project_indices(self, indices: torch.Tensor) -> torch.Tensor:
+        """
+        Projects patch indices from low-resolution LD grid to high-res color image grid.
+        
+        :param self
+        :param indices: selected indices of shape (B, k)
+        :type indices: torch.Tensor
+        :return: selected indices of shape (B, k), where each set of indices are a collection of new shape indices.
+        :rtype: torch.Tensor
+
+        TODO: Implement more general logic
+        1. Calculate grid dimensions for source and target
+        2. source index -> 2D grid coords -> normalized grid coords (between 0,0 and 1,1) -> target 2d grid coords -> target index
+        """
+        projected_indices = indices
+        return projected_indices
+    
     def forward(
         self,
-        magno_patches: torch.Tensor,
+        color_patches: torch.Tensor,
         vit_positional_embedding: torch.Tensor,
         scores: torch.Tensor,
         centers: torch.Tensor
@@ -85,7 +102,7 @@ class SpatialThresholdSelector(nn.Module):
         Select patches based on spatial threshold strategy.
         
         Args:
-            magno_patches: All patches from magno image, shape (B, N, D)
+            color_patches: All patches from color image, shape (B, N, D)
             vit_positional_embedding: Positional embeddings, shape (1, N+1, D)
             scores: Patch importance scores, shape (B, N)
             centers: center of gravities, shape (B, 2)
@@ -93,8 +110,8 @@ class SpatialThresholdSelector(nn.Module):
         Returns:
             Selected patches with positional embeddings added, shape (B, k, D)
         """
-        B, N, D = magno_patches.shape
-        k = max(1, int(N * self.patch_percentage))
+        B, N, D = color_patches.shape
+        k = max(1, int(N * self.patch_percentage)) # k : number of patches to select
         
         # Compute spatial weights
         num_patches_side = int(np.sqrt(N))
@@ -112,9 +129,11 @@ class SpatialThresholdSelector(nn.Module):
         # Select patches
         selected_indices = torch.multinomial(joint, num_samples=k, replacement=False) # (B, k)
         
+        projected_indices = self._project_indices(selected_indices)
+
         # Gather selected patches
-        indices_expanded = selected_indices.unsqueeze(-1).expand(-1, -1, D)
-        selected_patches = torch.gather(magno_patches, 1, indices_expanded)
+        indices_expanded = projected_indices.unsqueeze(-1).expand(-1, -1, D)
+        selected_patches = torch.gather(color_patches, 1, indices_expanded)
         
         # Gather positional embeddings (skip CLS token)
         pos_embed_patches = vit_positional_embedding[:, 1:, :]

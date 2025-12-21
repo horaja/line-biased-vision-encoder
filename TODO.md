@@ -1,11 +1,10 @@
-# TASKS
-
-## First thoughts
-- [ ] May need to condense into one preprocessing script
-- [ ] May need to condense into one visualizing script
-- [ ] Fix SpatialThresholdSelector
-  - Patches should be from 'ventral', or color 256 images
-  - [ ] Config file needs two different sets of parameters for #patches, dimensions, etc
-    - 1 for LD, 1 for color
-  - Projection Mechanism for LD scores -> Color scores
-    - [ ] COG calculation OK because normalized
+- [ ] Investigate the implications of multinomial sampling.
+  - Figure out how to semi-reliably visualize selected indices of collection of images
+    - worst case: just run multinomial sampling many times, take average or whatever.
+- [X] Update `SelectiveMagnoViT` to use projected indices.
+  - [ ] In the future, create a more logical implementation
+- [ ] Fix configuration loading in `scripts/train.py` and `selective_magno_vit/data/dataset.py`.
+- [ ] Update `visualize.py` and `evaluator.py` and trainer
+- [ ] Update transforms, visualize_results, evaluate.
+- [ ] Update all slurm scripts
+- [ ] Update tests in `tests/`.

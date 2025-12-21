@@ -41,8 +41,10 @@ class SelectiveMagnoViT(nn.Module):
         self,
         patch_percentage: float = 0.4,
         num_classes: int = 10,
-        img_size: int = 64,
-        patch_size: int = 4,
+        color_img_size: int = 256,
+        color_patch_size: int = 16,
+        ld_img_size: int = 64,
+        ld_patch_size: int = 4,
         vit_model_name: str = 'vit_tiny_patch16_224.augreg_in21k',
         selector_config: Optional[Dict] = None,
         embed_dim: Optional[int] = None,
@@ -53,14 +55,18 @@ class SelectiveMagnoViT(nn.Module):
         # Validate inputs
         if not 0 < patch_percentage <= 1.0:
             raise ValueError(f"patch_percentage must be in (0, 1], got {patch_percentage}")
-        if img_size % patch_size != 0:
-            raise ValueError(f"img_size ({img_size}) must be divisible by patch_size ({patch_size})")
+        if color_img_size % color_patch_size != 0:
+            raise ValueError(f"color_img_size ({color_img_size}) must be divisible by color_patch_size ({color_patch_size})")
+        if ld_img_size % ld_patch_size != 0:
+            raise ValueError(f"ld_img_size ({ld_img_size}) must be divisible by ld_patch_size ({ld_patch_size})")
 
         # Store configuration
         self.patch_percentage = patch_percentage
         self.num_classes = num_classes
-        self.img_size = img_size
-        self.patch_size = patch_size
+        self.color_img_size = color_img_size
+        self.color_patch_size = color_patch_size
+        self.ld_img_size = ld_img_size
+        self.ld_patch_size = ld_patch_size
         self.vit_model_name = vit_model_name
 
         # Load ViT backbone from timm
@@ -72,10 +78,9 @@ class SelectiveMagnoViT(nn.Module):
         self.embed_dim = embed_dim
 
         # Replace patch embedding layer for custom image size
-        # This allows us to work with images of different sizes than the pretrained model
         self.vit.patch_embed = timm.models.vision_transformer.PatchEmbed(
-            img_size=img_size,
-            patch_size=patch_size,
+            img_size=color_img_size,
+            patch_size=color_patch_size,
             in_chans=3,
             embed_dim=embed_dim
         )
@@ -91,26 +96,25 @@ class SelectiveMagnoViT(nn.Module):
         self.vit.head = nn.Linear(embed_dim, num_classes)
 
         # Initialize custom modules for patch selection
-        self.scorer = PatchImportanceScorer(patch_size=patch_size)
+        self.scorer = PatchImportanceScorer(patch_size=ld_patch_size)
 
         # Setup selector with config
         if selector_config is None:
             selector_config = {}
         self.selector = SpatialThresholdSelector(
             patch_percentage=patch_percentage,
-            threshold=selector_config.get('threshold', 0.3),
             gaussian_std=selector_config.get('gaussian_std', 0.25)
         )
 
         # Store metadata
         self.num_patches = num_patches
 
-    def forward(self, magno_image: torch.Tensor, line_drawing: torch.Tensor) -> torch.Tensor:
+    def forward(self, color_image: torch.Tensor, line_drawing: torch.Tensor) -> torch.Tensor:
         """
         Forward pass through the model.
 
         Args:
-            magno_image: Batch of Magno-channel images of shape (B, 3, H, W)
+            color_image: Batch of color images of shape (B, 3, H, W)
                         These are the actual images to be processed
             line_drawing: Batch of line drawings of shape (B, 1, H, W)
                          Used to determine which patches are important
@@ -121,8 +125,8 @@ class SelectiveMagnoViT(nn.Module):
         # Step 1: Score patches based on line drawing density
         patch_scores = self.scorer(line_drawing)  # (B, num_patches)
 
-        # Step 2: Extract all patches from the Magno image
-        all_patches = self.vit.patch_embed(magno_image)  # (B, num_patches, embed_dim)
+        # Step 2: Extract all patches from the color image
+        all_patches = self.vit.patch_embed(color_image)  # (B, num_patches, embed_dim)
 
         # Step 3: Select important patches using spatial threshold strategy
         # This adds positional embeddings to the selected patches
@@ -137,7 +141,7 @@ class SelectiveMagnoViT(nn.Module):
         cls_token_with_pos = self.vit.cls_token + self.vit.pos_embed[:, :1, :]
 
         # Step 5: Combine [CLS] token with selected patches
-        batch_size = magno_image.shape[0]
+        batch_size = color_image.shape[0]
         full_sequence = torch.cat([
             cls_token_with_pos.expand(batch_size, -1, -1),  # (B, 1, embed_dim)
             selected_patches  # (B, k, embed_dim)
@@ -158,6 +162,7 @@ class SelectiveMagnoViT(nn.Module):
 
         return logits
 
+    # TODO: Change to track currently sampled patches
     @torch.no_grad()
     def get_selected_patch_indices(self, line_drawing: torch.Tensor) -> torch.Tensor:
         """
@@ -184,6 +189,7 @@ class SelectiveMagnoViT(nn.Module):
 
         return indices
 
+    # TODO: Ensure this logic works with softmax-ed probabilities.
     @torch.no_grad()
     def get_patch_importance_map(self, line_drawing: torch.Tensor) -> torch.Tensor:
         """
@@ -219,8 +225,10 @@ class SelectiveMagnoViT(nn.Module):
         return {
             'model_name': self.__class__.__name__,
             'vit_backbone': self.vit_model_name,
-            'img_size': self.img_size,
-            'patch_size': self.patch_size,
+            'color_img_size': self.color_img_size,
+            'color_patch_size': self.color_patch_size,
+            'ld_img_size': self.ld_img_size,
+            'ld_patch_size': self.ld_patch_size,
             'num_patches': self.num_patches,
             'selected_patches': self.get_num_selected_patches(),
             'patch_percentage': self.patch_percentage,

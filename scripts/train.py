@@ -30,9 +30,9 @@ def parse_args():
         help="Path to configuration file"
     )
     parser.add_argument(
-        "--magno_dir",
+        "--color_dir",
         type=str,
-        help="Override magno image directory"
+        help="Override color image directory"
     )
     parser.add_argument(
         "--lines_dir",
@@ -74,8 +74,8 @@ def main():
     config = Config(args.config)
     
     # Override with command line arguments
-    if args.magno_dir:
-        config.set('data.magno_dir', args.magno_dir)
+    if args.color_dir:
+        config.set('data.color_dir', args.color_dir)
     if args.lines_dir:
         config.set('data.lines_dir', args.lines_dir)
     if args.output_dir:
@@ -112,8 +112,10 @@ def main():
     model = SelectiveMagnoViT(
         patch_percentage=config.get('model.patch_percentage'),
         num_classes=num_classes,
-        img_size=config.get('model.img_size'),
-        patch_size=config.get('model.patch_size'),
+        color_img_size=config.get('model.color_img_size'),
+        color_patch_size=config.get('model.color_patch_size'),
+        ld_img_size=config.get('model.ld_img_size'),
+        ld_patch_size=config.get('model.ld_patch_size'),
         vit_model_name=config.get('model.vit_model_name'),
         selector_config=config.get('model.selector')
     ).to(device)
