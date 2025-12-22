@@ -70,6 +70,10 @@ class CheckpointManager:
         Returns:
             Path to the saved checkpoint
         """
+        # If it's not the best model, we strictly do nothing/return None
+        if not is_best:
+            return None
+
         # Prepare checkpoint dictionary
         checkpoint = {
             'epoch': epoch,
@@ -79,44 +83,23 @@ class CheckpointManager:
 
         if optimizer is not None:
             checkpoint['optimizer_state_dict'] = optimizer.state_dict()
-
         if scheduler is not None:
             checkpoint['scheduler_state_dict'] = scheduler.state_dict()
-
         if metrics is not None:
             checkpoint['metrics'] = metrics
-
         if extra_info is not None:
             checkpoint['extra_info'] = extra_info
 
-        # Determine filename
-        if filename is None:
-            filename = f"checkpoint_epoch_{epoch:04d}.pth"
+        # Strictly save ONLY to best_model.pth
+        best_path = self.checkpoint_dir / "best_model.pth"
+        torch.save(checkpoint, best_path)
+        logger.info(f"Saved best model to {best_path}")
 
-        checkpoint_path = self.checkpoint_dir / filename
+        # Optional: Save weights-only file for easier inference loading
+        best_weights_path = self.checkpoint_dir / "best_model_weights.pth"
+        torch.save(model.state_dict(), best_weights_path)
 
-        # Save checkpoint
-        torch.save(checkpoint, checkpoint_path)
-        logger.info(f"Saved checkpoint to {checkpoint_path}")
-
-        # Track checkpoint
-        self.checkpoint_history.append(checkpoint_path)
-
-        # Save best model separately if requested
-        if is_best and self.save_best:
-            best_path = self.checkpoint_dir / "best_model.pth"
-            torch.save(checkpoint, best_path)
-            logger.info(f"Saved best model to {best_path}")
-
-            # Also save just the model weights for easy loading
-            best_weights_path = self.checkpoint_dir / "best_model_weights.pth"
-            torch.save(model.state_dict(), best_weights_path)
-
-        # Clean up old checkpoints if needed
-        if self.max_checkpoints > 0 and len(self.checkpoint_history) > self.max_checkpoints:
-            self._cleanup_old_checkpoints()
-
-        return checkpoint_path
+        return best_path
 
     def load_checkpoint(
         self,
