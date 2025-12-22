@@ -30,7 +30,7 @@ echo "Environment activated successfully"
 # Change to project directory
 cd $SLURM_SUBMIT_DIR
 
-$PP = 1.0
+PP=1.0
 
 # Run training with unbuffered output
 python -u scripts/train.py \
