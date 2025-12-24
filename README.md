@@ -6,3 +6,4 @@ Some Notes:
 -> tests directory and slurm/submit_tests.py are broken.
 -> spatial transforms are not implemented currently
 -> patch sizes and image sizes NEED to be fixed, as projection logic has not yet been implemented
+-> for eval: set pp to have evaluated in config file

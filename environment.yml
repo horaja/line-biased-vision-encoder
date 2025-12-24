@@ -8,6 +8,7 @@ dependencies:
   - torchaudio
   - numpy
   - scipy
+  - matplotlib
   - pip
   - tensorboard
   - pillow
