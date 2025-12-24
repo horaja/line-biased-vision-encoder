@@ -9,6 +9,7 @@ dependencies:
   - numpy
   - scipy
   - matplotlib
+  - seaborn
   - pip
   - tensorboard
   - pillow

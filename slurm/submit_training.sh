@@ -26,6 +26,7 @@ eval "$(mamba shell hook --shell bash)"
 mamba activate vla 
 echo "Environment activated successfully"
 
+nvidia-smi
 
 # Change to project directory
 cd $SLURM_SUBMIT_DIR
