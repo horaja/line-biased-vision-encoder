@@ -105,8 +105,10 @@ class SelectiveMagnoViT(nn.Module):
             selector_config = {}
         self.selector = SpatialThresholdSelector(
             patch_percentage=patch_percentage,
-            gaussian_std=selector_config.get('gaussian_std', 0.25)
+            gaussian_std=selector_config.get('gaussian_std', 0.25),
+            strategy=selector_config.get('strategy', 'smart')
         )
+        print(f"Strategy: {selector_config.get('strategy', 'smart')}")
 
         # Store metadata
         self.num_patches = num_patches

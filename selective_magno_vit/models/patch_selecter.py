@@ -14,6 +14,7 @@ class SpatialThresholdSelector(nn.Module):
     Args:
         patch_percentage: Fraction of patches to select (0, 1]
         gaussian_std: Standard deviation for Gaussian spatial weighting
+        strategy: the selection strategy to use 
 
     Note these args must be treated like hyperparameters.
     """
@@ -21,7 +22,8 @@ class SpatialThresholdSelector(nn.Module):
     def __init__(
         self,
         patch_percentage: float,
-        gaussian_std: float = 0.25
+        gaussian_std: float = 0.25,
+        strategy: str = 'smart'
     ):
         super().__init__()
         
@@ -30,6 +32,7 @@ class SpatialThresholdSelector(nn.Module):
         
         self.patch_percentage = patch_percentage
         self.gaussian_std = gaussian_std
+        self.strategy = strategy
     
     def _create_gaussian_weights(
         self,
@@ -91,7 +94,7 @@ class SpatialThresholdSelector(nn.Module):
         projected_indices = indices
         return projected_indices
 
-    def get_indices(self, scores : torch.Tensor, centers : torch.Tensor) -> torch.Tensor:
+    def get_indices(self, scores : torch.Tensor, centers : torch.Tensor, strategy: str = 'smart') -> torch.Tensor:
         """
         Generate selected indices using multinomial sampling and spatial bias.
         Expose helper function for visualization and consistency.
@@ -101,24 +104,30 @@ class SpatialThresholdSelector(nn.Module):
         :type scores: torch.Tensor
         :param centers: center of gravities of items in batch of shape (B, 2)
         :type centers: torch.Tensor
+        :param strategy: the selection strategy to use
+        :type strategy: str
         :return: projected selected indices of shape (B, k)
         :rtype: Any
+
         """
         B, N = scores.shape
         k = max(1, int(N * self.patch_percentage)) # k : number of patches to select
         
-        # Compute spatial weights
-        num_patches_side = int(np.sqrt(N))
-        if num_patches_side ** 2 != N:
-            raise ValueError(f"Number of patches {N} is not a perfect square")
-        
-        gaussian_weights = self._create_gaussian_weights(
-            num_patches_side, num_patches_side, centers
-        ) # spatial prior probability distribution
+        if strategy == 'random':
+            joint = torch.ones_like(scores)
+        else:
+            # Compute spatial weights
+            num_patches_side = int(np.sqrt(N))
+            if num_patches_side ** 2 != N:
+                raise ValueError(f"Number of patches {N} is not a perfect square")
+            
+            gaussian_weights = self._create_gaussian_weights(
+                num_patches_side, num_patches_side, centers
+            ) # spatial prior probability distribution
 
-        # Combine scores with spatial bias
-        joint = scores * gaussian_weights # (B, N)
-        joint = joint / (joint.sum(dim=1, keepdim=True) + 1e-8) # renormalize per batch
+            # Combine scores with spatial bias
+            joint = scores * gaussian_weights # (B, N)
+            joint = joint / (joint.sum(dim=1, keepdim=True) + 1e-8) # renormalize per batch
 
         # Select patches
         selected_indices = torch.multinomial(joint, num_samples=k, replacement=False) # (B, k)
@@ -148,7 +157,7 @@ class SpatialThresholdSelector(nn.Module):
         B, _, D = color_patches.shape
         
         # Get projected selected indices
-        projected_indices = self.get_indices(scores, centers)
+        projected_indices = self.get_indices(scores, centers, self.strategy)
 
         # Gather selected patches
         indices_expanded = projected_indices.unsqueeze(-1).expand(-1, -1, D)
