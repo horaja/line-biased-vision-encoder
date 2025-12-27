@@ -122,6 +122,37 @@ def main():
         selector_config=config.get('model.selector')
     ).to(device)
     
+    # =========================================================
+    # START: Freeze layers for fine-tuning
+    # =========================================================
+    logger.info("Freezing backbone layers for fine-tuning...")
+    
+    # 1. First, freeze the entire model
+    for param in model.parameters():
+        param.requires_grad = False
+        
+    # 2. Unfreeze the Classification Head (New/Randomly initialized)
+    for param in model.vit.head.parameters():
+        param.requires_grad = True
+        
+    # 3. Unfreeze Positional Embeddings (New/Randomly initialized)
+    model.vit.pos_embed.requires_grad = True
+    
+    # 4. Unfreeze Patch Embeddings (New/Randomly initialized)
+    # You must train this because you replaced the layer in __init__
+    for param in model.vit.patch_embed.parameters():
+        param.requires_grad = True
+
+    # 5. Unfreeze Normalization Layer (Recommended)
+    # This helps adapt the frozen features to your specific dataset stats
+    for param in model.vit.norm.parameters():
+        param.requires_grad = True
+        
+    # Note: model.scorer and model.selector have no trainable parameters
+    # =========================================================
+    # END: Freeze layers
+    # =========================================================
+
     # Log the parameter counts to confirm
     total_params = sum(p.numel() for p in model.parameters())
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)

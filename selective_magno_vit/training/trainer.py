@@ -61,7 +61,7 @@ class Trainer:
 
         # Setup optimizer
         self.optimizer = AdamW(
-            model.parameters(),
+            filter(lambda p: p.requires_grad, model.parameters()),
             lr=config.get('training.learning_rate', 1e-4),
             weight_decay=config.get('training.weight_decay', 0.01)
         )

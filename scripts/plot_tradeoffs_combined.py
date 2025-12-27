@@ -2,11 +2,15 @@ import os
 import json
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import seaborn as sns
 
-# --- 1. Silent Parsing Logic ---
+# --- 1. Parsing Logic ---
 def parse_evaluation_results(root_dir="results"):
     data = []
+    
+    # Only process these specific folders
+    valid_methods = {'smart', 'random', 'few', 'few-random'}
     
     if not os.path.exists(root_dir):
         print(f"Error: Directory '{root_dir}' not found.")
@@ -20,8 +24,11 @@ def parse_evaluation_results(root_dir="results"):
                 # Path parsing
                 experiment_id = os.path.basename(current_folder)
                 parent_folder = os.path.dirname(current_folder)
-                method = os.path.basename(parent_folder) # 'smart' or 'random'
+                method = os.path.basename(parent_folder) 
 
+                # Filter: Must be in the valid list and must be an eval folder
+                if method not in valid_methods:
+                    continue
                 if not experiment_id.startswith("eval_"):
                     continue
 
@@ -29,12 +36,13 @@ def parse_evaluation_results(root_dir="results"):
                     with open(file_path, 'r') as f:
                         content = json.load(f)
                         
-                        # Extract metrics (handling nesting)
+                        # Extract metrics
                         accuracy = content.get('accuracy', 0)
                         
                         patch_stats = content.get('patch_selection_stats', {})
                         keep_ratio = patch_stats.get('avg_patch_percentage', None)
                         
+                        # Fallback for older/different json structures
                         if keep_ratio is None:
                             keep_ratio = content.get('keep_ratio', 0)
 
@@ -50,9 +58,9 @@ def parse_evaluation_results(root_dir="results"):
 
     return pd.DataFrame(data)
 
-# --- 2. ICML Style Plotting ---
-def plot_icml_style(df, output_dir="results"):
-    # Set style
+# --- 2. Combined Plotting with Log Scale ---
+def plot_combined_tradeoffs(df, output_dir="results"):
+    # Set ICML/Paper style
     plt.rcParams.update({
         'font.family': 'serif',
         'font.serif': ['Times New Roman', 'DejaVu Serif', 'serif'],
@@ -71,28 +79,39 @@ def plot_icml_style(df, output_dir="results"):
 
     plt.figure()
 
-    # Data conversion
+    # Data conversion to percentages
     df['Patches Kept (%)'] = df['keep_ratio'] * 100
     df['Accuracy (%)'] = df['accuracy'] * 100
 
-    # Define styles
-    # Mapping: smart -> Ours, random -> Random
+    # Create a Group column to merge curves
+    # smart + few -> Ours
+    # random + few-random -> Random
+    method_map = {
+        'smart': 'Ours',
+        'few': 'Ours',
+        'random': 'Random',
+        'few-random': 'Random'
+    }
+    df['group'] = df['method'].map(method_map)
+
+    # Define styles for the two main groups
     styles = {
-        'noft':  {'color': 'black', 'ls': '-',  'marker': 'o', 'label': 'No FT'},
-        'noft-random': {'color': 'grey',  'ls': '--', 'marker': '',  'label': 'Random'}
+        'Ours':   {'color': 'black', 'ls': '-',  'marker': 'o', 'label': 'Ours'},
+        'Random': {'color': 'grey',  'ls': '--', 'marker': '',  'label': 'Random'}
     }
 
-    # Plot
-    for method in ['noft', 'noft-random']:
-        subset = df[df['method'] == method]
+    # Plot each group
+    for group_name in ['Ours', 'Random']:
+        subset = df[df['group'] == group_name]
         
-        # Sort so lines connect properly
+        # Sort by patch percentage descending (100 -> 0)
         subset = subset.sort_values(by='Patches Kept (%)', ascending=False)
         
         if subset.empty:
+            print(f"Warning: No data found for group '{group_name}'")
             continue
             
-        style = styles.get(method, {'color': 'blue', 'ls': '-', 'marker': 'x', 'label': method})
+        style = styles.get(group_name)
 
         plt.plot(
             subset['Patches Kept (%)'], 
@@ -101,31 +120,39 @@ def plot_icml_style(df, output_dir="results"):
             color=style['color'],
             linestyle=style['ls'],
             marker=style['marker'],
-            markersize=8,
+            markersize=6,
             linewidth=2.5
         )
 
     # Formatting
-    plt.xlabel('Patches Kept (%)')
+    plt.xlabel('Patches Kept (%) (Log Scale)')
     plt.ylabel('Accuracy (%)')
     
-    # 1. Start Scale at 0
-    plt.ylim(0, 100) 
+    # 1. Log Scale for X Axis to un-bunch the small values
+    plt.xscale('log')
     
-    # 2. Invert X axis (100 -> 0)
-    plt.gca().invert_xaxis()
+    # 2. Set nice integer ticks for log scale (1, 2, 5, 10, 20, 50, 100)
+    plt.gca().xaxis.set_major_formatter(ticker.ScalarFormatter())
+    plt.gca().set_xticks([1, 2, 5, 10, 20, 50, 100])
+    
+    # 3. Start scale at 0 for Y, and fit X tightly
+    plt.ylim(0, 100)
+    plt.xlim(100, 0.9) # Limits slightly wider than 1 to ensure 1 is visible
+    
+    # 4. Invert X axis (100 -> 1)
+    # Note: For log scale, we set limits (high, low) to invert
+    plt.xlim(105, 0.9) 
     
     # Legend
-    plt.legend(frameon=True, fancybox=False, edgecolor='black')
+    plt.legend(frameon=True, fancybox=False, edgecolor='black', loc='lower right')
     
     # Clean spines
     sns.despine()
 
-    # 3. Save to results folder
+    # Save
     plt.tight_layout()
-    output_path = os.path.join(output_dir, 'icml_figure.png')
+    output_path = os.path.join(output_dir, 'combined_tradeoff_log_figure.png')
     
-    # Ensure directory exists just in case
     os.makedirs(output_dir, exist_ok=True)
     
     plt.savefig(output_path, format='png', dpi=300, bbox_inches='tight', pad_inches=0.1)
@@ -134,9 +161,14 @@ def plot_icml_style(df, output_dir="results"):
 # --- Execution ---
 if __name__ == "__main__":
     target_dir = "results"
+    
+    # 1. Parse
+    print(f"Scanning '{target_dir}' for smart, random, few, few-random...")
     df = parse_evaluation_results(target_dir)
     
+    # 2. Plot
     if not df.empty:
-        plot_icml_style(df, output_dir=target_dir)
+        print("Found data for methods:", df['method'].unique())
+        plot_combined_tradeoffs(df, output_dir=target_dir)
     else:
-        print("No valid data found.")
+        print("No valid data found matching the criteria.")
