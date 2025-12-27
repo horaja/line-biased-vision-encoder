@@ -27,6 +27,7 @@ wheels/
 
 # Data
 datasets/
+data/
 *.jpg
 *.jpeg
 *.png
