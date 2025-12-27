@@ -104,8 +104,8 @@ def main():
     logger.info(f"Using device: {device}")
     
     # Create dataloaders
-    train_loader, val_loader = get_dataloaders(config)
-    num_classes = train_loader.dataset.num_classes
+    train_loader, val_loader, test_loader = get_dataloaders(config)
+    num_classes = train_loader.dataset.dataset.num_classes if isinstance(train_loader.dataset, torch.utils.data.Subset) else train_loader.dataset.num_classes
     logger.info(f"Number of classes: {num_classes}")
     logger.info(f"Training samples: {len(train_loader.dataset)}")
     logger.info(f"Validation samples: {len(val_loader.dataset)}")

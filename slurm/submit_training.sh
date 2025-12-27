@@ -36,9 +36,7 @@ PP=1.0
 # Run training with unbuffered output
 python -u scripts/train.py \
     --config configs/base_config.yml \
-    --color_dir "${COLOR_DIR:-data/preprocessed/color_images}" \
-    --lines_dir "${LINES_DIR:-data/preprocessed/line_drawings}" \
-    --output_dir "checkpoints/p${PP}" \
+    --output_dir "checkpoints/imagenet100/p${PP}" \
     --patch_percentage "$PP" \
     --epochs 100
 

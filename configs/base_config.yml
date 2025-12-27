@@ -8,14 +8,14 @@ experiment:
 # Data paths - these will be overridden by environment variables or CLI args
 # NOTE: Update these paths to absolute paths for your cluster setup
 data:
-  raw_root: "/lab_data/leelab/VLA-Husain-Tianqin/magno_stream_encoder/data/raw_dataset"
-  preprocessed_root: "/lab_data/leelab/VLA-Husain-Tianqin/magno_stream_encoder/data/preprocessed"
-  lines_dir: "${data.preprocessed_root}/line_drawings"
-  color_dir: "${data.preprocessed_root}/color_images"
+  raw_root: null
+  preprocessed_root: null 
+  lines_dir: null 
+  color_dir: "/lab_data/leelab/VLA-Husain-Tianqin/magno_stream_encoder/data/imagenet-100"
 
 # Model architecture
 model:
-  patch_percentage: 0.1
+  patch_percentage: 0.01
   color_img_size: 256
   ld_img_size: 64
   color_patch_size: 16
@@ -26,7 +26,7 @@ model:
   # Patch selector parameters
   selector:
     gaussian_std: 0.25
-    strategy: 'smart'
+    strategy: 'random'
 
 # Training hyperparameters
 training:

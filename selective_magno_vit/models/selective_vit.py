@@ -113,7 +113,7 @@ class SelectiveMagnoViT(nn.Module):
         # Store metadata
         self.num_patches = num_patches
 
-    def forward(self, color_image: torch.Tensor, line_drawing: torch.Tensor) -> torch.Tensor:
+    def forward(self, color_image: torch.Tensor, line_drawing: Optional[torch.Tensor] = None) -> torch.Tensor:
         """
         Forward pass through the model.
 
@@ -122,12 +122,27 @@ class SelectiveMagnoViT(nn.Module):
                         These are the actual images to be processed
             line_drawing: Batch of line drawings of shape (B, 1, H, W)
                          Used to determine which patches are important
+                        Optional, not needed when doing random patch selection
 
         Returns:
             Classification logits of shape (B, num_classes)
         """
-        # Step 1: Score patches based on line drawing density
-        patch_scores, centers = self.scorer(line_drawing)  # (B, num_patches)
+        # Step 1: Score patches or generate dummy scores for random selection
+        if line_drawing is not None:
+            patch_scores, centers = self.scorer(line_drawing)  # (B, num_patches)
+        else:
+            # ASSERT: selection strategy is RANDOM
+            # Handle case where we don't have line drawings (Random selection strategy)
+            B = color_image.shape[0]
+            # Use the patch embedder to get accurate number of patches
+            N = self.vit.patch_embed.num_patches
+            device = color_image.device
+            
+            # Create dummy scores (uniform) and centers
+            # The 'random' strategy in SpatialThresholdSelector just creates a ones_like(scores) tensor,
+            # so the actual values here don't matter, just the shape/device.
+            patch_scores = torch.ones((B, N), device=device)
+            centers = torch.zeros((B, 2), device=device)
 
         # Step 2: Extract all patches from the color image
         all_patches = self.vit.patch_embed(color_image)  # (B, num_patches, embed_dim)
