@@ -43,7 +43,7 @@ echo "Evaluating checkpoint: $CHECKPOINT"
 
 # Create unique output directory for this evaluation run
 CHECKPOINT_NAME=$(basename "$CHECKPOINT" .pth)
-SPLIT_NAME="${SPLIT:-val}"
+SPLIT_NAME="${SPLIT:-test}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 RUN_DIR="results/eval_${CHECKPOINT_NAME}_${SPLIT_NAME}_${TIMESTAMP}"
 

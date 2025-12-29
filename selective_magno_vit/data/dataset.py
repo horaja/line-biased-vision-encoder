@@ -9,6 +9,7 @@ import logging
 
 import torch
 from torch.utils.data import Dataset, DataLoader, random_split
+from torch.utils.data.dataloader import default_collate
 from torchvision import transforms, datasets
 from PIL import Image
 
@@ -38,6 +39,23 @@ class StandardImageDataset(datasets.ImageFolder):
     def num_classes(self) -> int:
         return len(self.classes)
 
+def collate_none_safe(batch):
+    """
+    Custom collate function that handles None values by returning None 
+    instead of crashing.
+    """
+    elem = batch[0]
+    
+    # If the element is a dictionary, process each key
+    if isinstance(elem, dict):
+        return {key: collate_none_safe([d[key] for d in batch]) for key in elem}
+    
+    # If the element is None, return None (handles the line_drawing case)
+    if elem is None:
+        return None
+        
+    # Otherwise use default behavior
+    return default_collate(batch)
 
 def get_dataloaders(config) -> Tuple[DataLoader, DataLoader, DataLoader]:
     """
@@ -118,17 +136,20 @@ def get_dataloaders(config) -> Tuple[DataLoader, DataLoader, DataLoader]:
     
     train_loader = DataLoader(
         train_subset, batch_size=batch_size, shuffle=True, 
-        num_workers=num_workers, pin_memory=True
+        num_workers=num_workers, pin_memory=True,
+        collate_fn=collate_none_safe
     )
     
     val_loader = DataLoader(
         val_subset, batch_size=batch_size, shuffle=False, 
-        num_workers=num_workers, pin_memory=True
+        num_workers=num_workers, pin_memory=True,
+        collate_fn=collate_none_safe
     )
     
     test_loader = DataLoader(
         test_dataset, batch_size=batch_size, shuffle=False, 
-        num_workers=num_workers, pin_memory=True
+        num_workers=num_workers, pin_memory=True,
+        collate_fn=collate_none_safe
     )
     
     logger.info(f"Dataset Split -> Train: {len(train_subset)}, Val: {len(val_subset)}, Test (Held-out): {len(test_dataset)}")

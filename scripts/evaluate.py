@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Evaluation script for SelectiveMagnoViT model.
+Updated for Standard ImageNet-100 workflow.
 """
 
 import argparse
@@ -9,8 +10,6 @@ import sys
 from pathlib import Path
 
 import torch
-from torch.utils.data import DataLoader
-from torchvision import transforms
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -18,7 +17,8 @@ sys.path.insert(0, str(project_root))
 
 from selective_magno_vit.utils.config import Config
 from selective_magno_vit.models.selective_vit import SelectiveMagnoViT
-from selective_magno_vit.data.dataset import ImageNetteDataset
+# CHANGED: Import get_dataloaders instead of specific Dataset class
+from selective_magno_vit.data.dataset import get_dataloaders
 from selective_magno_vit.evaluation.evaluator import ModelEvaluator
 from selective_magno_vit.utils.logging import setup_logging
 from selective_magno_vit.utils.checkpointing import load_checkpoint
@@ -39,21 +39,11 @@ def parse_args():
         help="Path to model checkpoint"
     )
     parser.add_argument(
-        "--color_dir",
-        type=str,
-        help="Override color image directory"
-    )
-    parser.add_argument(
-        "--lines_dir",
-        type=str,
-        help="Override line drawing directory"
-    )
-    parser.add_argument(
         "--split",
         type=str,
-        default="val",
+        default="test", # Default to held-out test set
         choices=["train", "val", "test"],
-        help="Dataset split to evaluate on"
+        help="Dataset split to evaluate on (train=subset, val=subset, test=held-out)"
     )
     parser.add_argument(
         "--batch_size",
@@ -85,10 +75,6 @@ def main():
     config = Config(args.config)
 
     # Override with command line arguments
-    if args.color_dir:
-        config.set('data.color_dir', args.color_dir)
-    if args.lines_dir:
-        config.set('data.lines_dir', args.lines_dir)
     if args.batch_size:
         config.set('training.batch_size', args.batch_size)
     if args.output_dir:
@@ -107,30 +93,33 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger.info(f"Using device: {device}")
 
-    # Load dataset
-    val_transform = transforms.Compose([
-        transforms.Resize((config.get('model.color_img_size'), config.get('model.color_img_size'))),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
+    # CHANGED: Use get_dataloaders to ensure consistency with training splits
+    # get_dataloaders returns (train_loader, val_loader, test_loader)
+    logger.info("Initializing dataloaders...")
+    train_loader, val_loader, test_loader = get_dataloaders(config)
 
-    dataset = ImageNetteDataset(
-        color_root=config.get('data.color_dir'),
-        lines_root=config.get('data.lines_dir'),
-        split=args.split,
-        transform=val_transform
-    )
+    # Select the requested loader
+    if args.split == 'train':
+        dataloader = train_loader
+        logger.info("Selected: Training Subset")
+    elif args.split == 'val':
+        dataloader = val_loader
+        logger.info("Selected: Validation Subset (Model Selection Set)")
+    else: # test
+        dataloader = test_loader
+        logger.info("Selected: Held-Out Test Set (Raw 'val' folder)")
 
-    dataloader = DataLoader(
-        dataset,
-        batch_size=config.get('training.batch_size', 32),
-        shuffle=False,
-        num_workers=config.get('training.num_workers', 4),
-        pin_memory=True
-    )
-
-    num_classes = dataset.num_classes
-    logger.info(f"Dataset: {len(dataset)} samples, {num_classes} classes")
+    # Access the underlying dataset to get class info
+    # Handle Subset wrappers if present
+    if hasattr(dataloader.dataset, 'dataset'):
+        full_ds = dataloader.dataset.dataset
+    else:
+        full_ds = dataloader.dataset
+        
+    num_classes = full_ds.num_classes
+    class_names = full_ds.classes
+    
+    logger.info(f"Dataset: {len(dataloader.dataset)} samples, {num_classes} classes")
 
     # Create model
     model = SelectiveMagnoViT(
@@ -138,8 +127,8 @@ def main():
         num_classes=num_classes,
         color_img_size=config.get('model.color_img_size'),
         color_patch_size=config.get('model.color_patch_size'),
-        ld_img_size=config.get('model.ld_img_size'),
-        ld_patch_size=config.get('model.ld_patch_size'),
+        ld_img_size=config.get('model.ld_img_size', 64),
+        ld_patch_size=config.get('model.ld_patch_size', 4),
         vit_model_name=config.get('model.vit_model_name'),
         selector_config=config.get('model.selector')
     ).to(device)
@@ -149,17 +138,11 @@ def main():
     checkpoint = load_checkpoint(args.checkpoint, model, device=device)
     logger.info(f"Loaded checkpoint from epoch {checkpoint.get('epoch', 'unknown')}")
 
-    # Print model info
-    model_info = model.get_model_info()
-    logger.info("\nModel Information:")
-    for key, value in model_info.items():
-        logger.info(f"  {key}: {value}")
-
     # Create evaluator
     evaluator = ModelEvaluator(
         model=model,
         device=device,
-        class_names=dataset.class_names
+        class_names=class_names
     )
 
     # Run evaluation
@@ -181,7 +164,6 @@ def main():
         logger.info("\nSaving predictions...")
         predictions, probabilities = evaluator.predict(dataloader, return_probabilities=True)
         results['predictions'] = predictions
-        # Note: probabilities are numpy arrays and may need special handling for JSON
 
     # Save results
     results_dir = Path(config.get('output.results_dir', 'results'))
