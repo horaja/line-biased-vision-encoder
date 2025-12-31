@@ -95,8 +95,12 @@ class ModelEvaluator:
         for batch in progress_bar:
             # Move data to device
             color_images = batch['color_image'].to(self.device)
-            line_drawings = batch['line_drawing'].to(self.device)
             labels = batch['label'].to(self.device)
+            
+            # CHANGED: Handle None line drawings (Dataset returns None)
+            line_drawings = batch['line_drawing']
+            if line_drawings is not None:
+                line_drawings = line_drawings.to(self.device)
 
             # Forward pass
             outputs = self.model(color_images, line_drawings)
@@ -147,7 +151,7 @@ class ModelEvaluator:
             per_class_metrics = []
             for class_idx in range(num_classes):
                 precision, recall, f1 = compute_precision_recall_f1(confusion, class_idx)
-                class_name = self.class_names[class_idx] if self.class_names else f"Class_{class_idx}"
+                class_name = self.class_names[class_idx] if self.class_names and class_idx < len(self.class_names) else f"Class_{class_idx}"
                 per_class_metrics.append({
                     'class': class_name,
                     'accuracy': per_class_acc[class_idx],
@@ -220,7 +224,11 @@ class ModelEvaluator:
         progress_bar = tqdm(dataloader, desc="Predicting")
         for batch in progress_bar:
             color_images = batch['color_image'].to(self.device)
-            line_drawings = batch['line_drawing'].to(self.device)
+            
+            # CHANGED: Handle None line drawings
+            line_drawings = batch['line_drawing']
+            if line_drawings is not None:
+                line_drawings = line_drawings.to(self.device)
 
             outputs = self.model(color_images, line_drawings)
             _, predicted = torch.max(outputs, 1)
@@ -259,11 +267,17 @@ class ModelEvaluator:
         for batch in tqdm(dataloader, desc="Analyzing patch selection"):
             if samples_processed >= num_samples:
                 break
+            
+            # CHANGED: Get color images for fallback info
+            color_images = batch['color_image'].to(self.device)
 
-            line_drawings = batch['line_drawing'].to(self.device)
+            # CHANGED: Handle None line drawings
+            line_drawings = batch['line_drawing']
+            if line_drawings is not None:
+                line_drawings = line_drawings.to(self.device)
 
-            # Get selected patch indices
-            selected_indices = self.model.get_selected_patch_indices(line_drawings)
+            # Get selected patch indices (Model should handle None if passed color_images)
+            selected_indices = self.model.get_selected_patch_indices(line_drawings, color_images)
 
             batch_size = selected_indices.size(0)
             num_selected = selected_indices.size(1)

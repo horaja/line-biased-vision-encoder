@@ -181,9 +181,12 @@ class SelectiveMagnoViT(nn.Module):
 
         return logits
 
-    # TODO: Change to track currently sampled patches
     @torch.no_grad()
-    def get_selected_patch_indices(self, line_drawing: torch.Tensor) -> torch.Tensor:
+    def get_selected_patch_indices(
+        self, 
+        line_drawing: Optional[torch.Tensor] = None,
+        color_image: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
         """
         Get indices of selected patches for visualization purposes.
 
@@ -191,14 +194,28 @@ class SelectiveMagnoViT(nn.Module):
         considers important for a given line drawing.
 
         Args:
-            line_drawing: Line drawing tensor of shape (B, 1, H, W)
+            line_drawing: Line drawing tensor of shape (B, 1, H, W). Can be None.
+            color_image: Color image tensor of shape (B, 3, H, W). 
+                         Used to determine batch size/device if line_drawing is None.
 
         Returns:
             Indices of selected patches of shape (B, k) where k is the number
             of selected patches
         """
-        # Score patches
-        patch_scores, centers = self.scorer(line_drawing)
+        # Score patches or use dummy defaults
+        if line_drawing is not None:
+            patch_scores, centers = self.scorer(line_drawing)
+        else:
+            # Fallback for Random selection
+            if color_image is None:
+                raise ValueError("Must provide either line_drawing or color_image to determine batch parameters.")
+            
+            B = color_image.shape[0]
+            N = self.vit.patch_embed.num_patches
+            device = color_image.device
+            
+            patch_scores = torch.ones((B, N), device=device)
+            centers = torch.zeros((B, 2), device=device)
 
         # Get the multinomial sampled indices
         indices = self.selector.get_indices(patch_scores, centers)

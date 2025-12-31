@@ -15,7 +15,7 @@ data:
 
 # Model architecture
 model:
-  patch_percentage: 0.01
+  patch_percentage: 0.1
   color_img_size: 256
   ld_img_size: 64
   color_patch_size: 16
