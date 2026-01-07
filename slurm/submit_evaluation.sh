@@ -45,7 +45,7 @@ echo "Evaluating checkpoint: $CHECKPOINT"
 CHECKPOINT_NAME=$(basename "$CHECKPOINT" .pth)
 SPLIT_NAME="${SPLIT:-test}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-RUN_DIR="results/imagenet100-random/eval_${CHECKPOINT_NAME}_${SPLIT_NAME}_${TIMESTAMP}"
+RUN_DIR="results/imagenet100-random-DINO/eval_${CHECKPOINT_NAME}_${SPLIT_NAME}_${TIMESTAMP}"
 
 echo "Results will be saved to: $RUN_DIR"
 mkdir -p "$RUN_DIR"

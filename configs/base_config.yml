@@ -15,13 +15,13 @@ data:
 
 # Model architecture
 model:
-  patch_percentage: 0.1
+  patch_percentage: 0.5
   color_img_size: 256
   ld_img_size: 64
   color_patch_size: 16
   ld_patch_size: 4
   num_classes: 10
-  vit_model_name: "vit_tiny_patch16_224.augreg_in21k"
+  vit_model_name: "vit_small_patch16_224.dino"
   pretrained: true
   # Patch selector parameters
   selector:
@@ -31,7 +31,7 @@ model:
 # Training hyperparameters
 training:
   epochs: 100
-  batch_size: 32
+  batch_size: 64
   learning_rate: 1.0e-4
   weight_decay: 0.01
   patience: 20

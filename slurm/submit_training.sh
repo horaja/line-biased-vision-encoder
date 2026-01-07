@@ -36,7 +36,7 @@ PP=0.1
 # Run training with unbuffered output
 python -u scripts/train.py \
     --config configs/base_config.yml \
-    --output_dir "checkpoints/imagenet100/p${PP}" \
+    --output_dir "checkpoints/imagenet100-DINO/p${PP}" \
     --patch_percentage "$PP" \
 
 mamba deactivate
