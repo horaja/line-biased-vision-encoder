@@ -1,3 +1,7 @@
+[![Python 3.10](https://img.shields.io/badge/Python-3.10-blue.svg)](https://www.python.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.x-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 # Line-Guided Patch Selection ViT
 
 TL;DR: Line drawings guide a Vision Transformer to keep only the most informative patches, cutting compute while matching or beating full-patch baselines. Precomputed runs and visuals live in `results/`, so you can review in 60 seconds.
@@ -10,7 +14,9 @@ git submodule update --init --recursive  # pulls informative-drawings
 pip install -e .
 ```
 
-Smoke test (no data needed):
+<details>
+<summary>Smoke test (no data needed)</summary>
+
 ```bash
 python - <<'PY'
 import torch
@@ -33,6 +39,8 @@ print("Selected patches:", model.get_num_selected_patches())
 PY
 ```
 
+</details>
+
 ## Results (ImageNet-10 val)
 | Setting | Top-1 | Top-5 | GFLOPs | Artifacts |
 | --- | --- | --- | --- | --- |
@@ -43,12 +51,17 @@ Visuals at a glance:
 
 | Tradeoff curve | Selected patches (0.45 GFLOPs) | Confusion (selective) |
 | --- | --- | --- |
-| ![](results/combined_tradeoff_figure.png) | ![](results/smart/eval_best_model_val_20251224_035354/visualizations/patch_selection/patch_selection_sample_000.png) | ![](results/smart/eval_best_model_val_20251224_035354/visualizations/confusion_matrix_normalized.png) |
+| ![](assets/combined_tradeoff_figure.png) | ![](assets/patch_selection_sample_000.png) | ![](assets/confusion_matrix_normalized.png) |
 
 ## How it works (3 steps)
-1) Generate/injest line drawings (64×64) and score patches via average-pooled density + softmax; also compute center-of-gravity for spatial bias.  
-2) Apply a spatially aware sampler that multiplies scores by a Gaussian prior around the CoG and keeps the top fraction; selected indices reuse the ViT positional embeddings.  
-3) Feed only the kept patches (plus CLS) through the ViT blocks and head, delivering near-full accuracy at a fraction of the compute.
+```mermaid
+graph LR
+    A[Line Drawing (Magno Stream)] --> S[Selector]
+    B[Color Image (Parvo Stream)] --> E[Patch Embed]
+    E --> S
+    S --> V[ViT Blocks]
+    V --> H[Classifier Head / Logits]
+```
 
 ## Train / evaluate locally (needs data)
 - Preprocess (requires GPU and the `third_party/informative-drawings` submodule):
@@ -83,12 +96,21 @@ Visuals at a glance:
 SLURM equivalents remain under `slurm/` if you want cluster runs.
 
 ## Repo map
-- `selective_magno_vit/` — models (line-guided ViT), data loading, training, eval, utilities.
-- `scripts/` — entrypoints for train/eval/preprocess/visualize.
-- `configs/` — YAML configs (paths, hyperparams).
-- `results/` — precomputed metrics, plots, and patch-selection visuals to showcase.
-- `slurm/` — submission scripts for cluster usage.
-- `third_party/informative-drawings/` — submodule for line-drawing generation.
+```text
+.
+├─ selective_magno_vit/
+│  ├─ models/              # line-guided ViT + selector modules
+│  ├─ data/                # datasets and preprocessing
+│  ├─ training/            # trainer and callbacks
+│  └─ evaluation/          # evaluator and visualizer
+├─ scripts/                # train/eval/preprocess/visualize entrypoints
+├─ configs/                # YAML configs
+├─ results/                # precomputed plots, metrics, visuals (git-ignored)
+├─ assets/                 # checked-in copies of featured visuals
+├─ slurm/                  # cluster submission scripts
+├─ third_party/            # submodules (informative-drawings)
+└─ docs/                   # dev notes
+```
 
 ## Citation
 ```
