@@ -42,25 +42,26 @@ PY
 </details>
 
 ## Results (ImageNet-10 val)
-| Setting | Top-1 | Top-5 | GFLOPs | Artifacts |
-| --- | --- | --- | --- | --- |
-| Full patch budget (~all patches) | 0.734 | 0.964 | 1.408 | Confusion/per-class: `results/smart/eval_best_model_val_20251224_033043/visualizations/`; tradeoff plots: `results/fig_accuracy_vs_gflops.png`, `results/fig_gflops_scaling.png` |
+| Setting                           | Top-1 | Top-5 | GFLOPs | Artifacts                                                         |
+|:----------------------------------|:-----:|:-----:|:------:|:------------------------------------------------------------------|
+| Full patch budget (~all patches)  | 0.734 | 0.964 | 1.408  | Confusion/per-class: `results/smart/eval_best_model_val_20251224_033043/visualizations/` |
 | Line-guided selective (low compute) | **0.758** | **0.968** | **0.448** | Patch selection + confusion: `results/smart/eval_best_model_val_20251224_035354/visualizations/` |
 
 Visuals at a glance:
+![](assets/combined_tradeoff_log_figure.png)
+![](assets/patch_selection_sample_004.png)
+![](assets/confusion_matrix_normalized.png)
 
-| Tradeoff curve | Selected patches (0.45 GFLOPs) | Confusion (selective) |
-| --- | --- | --- |
-| ![](assets/combined_tradeoff_figure.png) | ![](assets/patch_selection_sample_000.png) | ![](assets/confusion_matrix_normalized.png) |
-
-## How it works (3 steps)
+## How it works
 ```mermaid
-graph LR
-    A[Line Drawing (Magno Stream)] --> S[Selector]
-    B[Color Image (Parvo Stream)] --> E[Patch Embed]
-    E --> S
-    S --> V[ViT Blocks]
-    V --> H[Classifier Head / Logits]
+graph LR;
+    A[Input Image] --> B(Magno Stream<br/>Line Drawing);
+    A --> C(Parvo Stream<br/>Color Image);
+    B --> D[Patch Scorer];
+    D -->|Importance Scores| E{Top-k Selector};
+    C -->|All Patches| E;
+    E -->|Selected Patches Only| F[Vision Transformer];
+    F --> G[Classification];
 ```
 
 ## Train / evaluate locally (needs data)
