@@ -30,7 +30,6 @@ datasets/
 data/
 *.jpg
 *.jpeg
-*.png
 *.JPEG
 *.npy
 *.npz
