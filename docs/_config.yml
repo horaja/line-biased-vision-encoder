@@ -1,3 +1,7 @@
 theme: jekyll-theme-cayman
+markdown: kramdown
+highlighter: rouge
+kramdown:
+  input: GFM
 title: ""
 description: ""

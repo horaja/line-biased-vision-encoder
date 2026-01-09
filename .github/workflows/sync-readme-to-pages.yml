@@ -20,15 +20,24 @@ jobs:
         with:
           submodules: false   # avoids your submodule checkout failure
 
-      - name: Sync README -> docs/index.md
+      - name: Sync README -> docs/index.md (Pages-safe)
         run: |
           mkdir -p docs
           cp README.md docs/index.md
+
+          # Make <details> blocks render markdown on GitHub Pages (kramdown)
+          perl -0777 -i -pe 's/<details>/<details markdown="1">/g' docs/index.md
+
+          # Copy assets so image links work on the Pages site
+          if [ -d assets ]; then
+            rm -rf docs/assets
+            cp -R assets docs/assets
+          fi
 
       - name: Commit & push if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/index.md
+          git add docs
           git diff --cached --quiet || git commit -m "Sync README to Pages"
           git push
