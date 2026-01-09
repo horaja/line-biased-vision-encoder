@@ -1,3 +1,34 @@
+<style>
+/* Hide the Minimal theme's header/title/sidebar so only README H1 remains */
+header, .site-header, .page-header, .sidebar, .wrapper > header {
+  display: none !important;
+}
+
+/* Keep content centered and readable */
+main, .main-content, .container, .wrapper {
+  max-width: 980px;
+  margin: 0 auto !important;
+  padding-top: 24px;
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  // Add an always-visible GitHub link (Minimal theme is inconsistent about showing it)
+  const a = document.createElement("a");
+  a.href = "https://github.com/horaja/magno_stream_encoder";
+  a.textContent = "GitHub ↗";
+  a.rel = "noopener noreferrer";
+  a.target = "_blank";
+  a.style.cssText =
+    "position:fixed;top:16px;right:18px;font:600 14px/1.2 system-ui;" +
+    "opacity:.78;text-decoration:none;z-index:9999;";
+  a.onmouseover = () => (a.style.opacity = "1");
+  a.onmouseout  = () => (a.style.opacity = ".78");
+  document.body.appendChild(a);
+});
+</script>
+
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", () => {
