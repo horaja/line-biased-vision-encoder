@@ -1,0 +1,35 @@
+name: Sync README to GitHub Pages
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "README.md"
+      - ".github/workflows/sync-readme-to-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: false   # avoids your submodule checkout failure
+
+      - name: Sync README -> docs/index.md
+        run: |
+          mkdir -p docs
+          touch docs/.nojekyll
+          cp README.md docs/index.md
+
+      - name: Commit & push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/index.md docs/.nojekyll
+          git diff --cached --quiet || git commit -m "Sync README to Pages"
+          git push
