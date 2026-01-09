@@ -4,23 +4,6 @@ header h1 { font-size: 28px; margin-bottom: 6px; }
 header p  { margin-top: 0; opacity: 0.85; }
 </style>
 
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-  // Add a subtle GitHub link without depending on theme layout
-  const a = document.createElement("a");
-  a.href = "https://github.com/horaja/magno_stream_encoder";
-  a.textContent = "GitHub ↗";
-  a.rel = "noopener noreferrer";
-  a.target = "_blank";
-  a.style.cssText =
-    "position:fixed;top:16px;right:18px;font:600 14px/1.2 system-ui;" +
-    "opacity:.78;text-decoration:none;z-index:9999;";
-  a.onmouseover = () => (a.style.opacity = "1");
-  a.onmouseout  = () => (a.style.opacity = ".78");
-  document.body.appendChild(a);
-});
-</script>
-
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", () => {
