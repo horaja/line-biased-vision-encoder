@@ -4,7 +4,7 @@
 
 # Line-Guided Patch Selection ViT
 
-TL;DR: Line drawings guide a Vision Transformer to keep only the most informative patches, cutting compute while matching or beating full-patch baselines. Precomputed runs and visuals live in `results/`, so you can review in 60 seconds.
+TL;DR: Line drawings guide a Vision Transformer model to keep only the most informative patches, cutting compute while matching or beating full-patch baselines. Precomputed runs and visuals live in `results/`, so you can review in 60 seconds.
 
 ## Quickstart (60s)
 ```bash
