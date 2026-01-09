@@ -14,7 +14,7 @@ git submodule update --init --recursive  # pulls informative-drawings
 pip install -e .
 ```
 
-<details>
+<details markdown="1">
 <summary>Smoke test (no data needed)</summary>
 
 ```bash
