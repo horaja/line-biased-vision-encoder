@@ -1,20 +1,12 @@
 <style>
-/* Hide the Minimal theme's header/title/sidebar so only README H1 remains */
-header, .site-header, .page-header, .sidebar, .wrapper > header {
-  display: none !important;
-}
-
-/* Keep content centered and readable */
-main, .main-content, .container, .wrapper {
-  max-width: 980px;
-  margin: 0 auto !important;
-  padding-top: 24px;
-}
+/* Make the header more subtle (instead of removing it) */
+header h1 { font-size: 28px; margin-bottom: 6px; }
+header p  { margin-top: 0; opacity: 0.85; }
 </style>
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-  // Add an always-visible GitHub link (Minimal theme is inconsistent about showing it)
+  // Add a subtle GitHub link without depending on theme layout
   const a = document.createElement("a");
   a.href = "https://github.com/horaja/magno_stream_encoder";
   a.textContent = "GitHub ↗";
@@ -34,7 +26,6 @@ document.addEventListener("DOMContentLoaded", () => {
 document.addEventListener("DOMContentLoaded", () => {
   mermaid.initialize({ startOnLoad: false });
 
-  // Convert ```mermaid code blocks into <div class="mermaid">…</div>
   document.querySelectorAll("pre code.language-mermaid").forEach((code) => {
     const div = document.createElement("div");
     div.className = "mermaid";

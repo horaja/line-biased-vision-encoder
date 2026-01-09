@@ -1,4 +1,5 @@
-theme: jekyll-theme-primer
+theme: jekyll-theme-minimal
 markdown: GFM
-title: ""
-description: ""
+title: "Compute-Efficient Vision Encoder"
+description: "Keep only the most informative patches to cut ViT compute while matching or beating full-patch baselines."
+show_downloads: false
