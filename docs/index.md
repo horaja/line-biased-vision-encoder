@@ -42,10 +42,12 @@ PY
 </details>
 
 ## Results (ImageNet-10 val)
-| Setting                           | Top-1 | Top-5 | GFLOPs | Artifacts                                                         |
-|:----------------------------------|:-----:|:-----:|:------:|:------------------------------------------------------------------|
-| Full patch budget (~all patches)  | 0.734 | 0.964 | 1.408  | Confusion/per-class: `results/smart/eval_best_model_val_20251224_033043/visualizations/` |
-| Line-guided selective (low compute) | **0.758** | **0.968** | **0.448** | Patch selection + confusion: `results/smart/eval_best_model_val_20251224_035354/visualizations/` |
+
+| Setting                            | Top-1 | Top-5 | GFLOPs |
+|:-----------------------------------|:-----:|:-----:|:------:|
+| Full patch budget (~all patches)   | 0.734 | 0.964 | 1.408  |
+| Line-guided selective (low compute)| **0.758** | **0.968** | **0.448** |
+
 
 Visuals at a glance:
 ![](assets/combined_tradeoff_log_figure.png)
