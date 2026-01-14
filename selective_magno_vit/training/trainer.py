@@ -121,8 +121,11 @@ class Trainer:
         for batch_idx, batch in enumerate(progress_bar):
             # Move data to device
             color_images = batch['color_image'].to(self.device)
-            line_drawings = batch['line_drawing'].to(self.device)
             labels = batch['label'].to(self.device)
+            line_drawings = batch['line_drawing']
+            if line_drawings is not None:
+                line_drawings = line_drawings.to(self.device)
+
 
             batch_size = color_images.size(0)
 
@@ -172,8 +175,10 @@ class Trainer:
             for batch in progress_bar:
                 # Move data to device
                 color_images = batch['color_image'].to(self.device)
-                line_drawings = batch['line_drawing'].to(self.device)
                 labels = batch['label'].to(self.device)
+                line_drawings = batch['line_drawing']
+                if line_drawings is not None:
+                    line_drawings = line_drawings.to(self.device)
                 
                 batch_size = color_images.size(0)
 

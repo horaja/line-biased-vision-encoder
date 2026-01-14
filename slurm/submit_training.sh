@@ -8,7 +8,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32gb
-#SBATCH --time=08:00:00
+#SBATCH --time=12:00:00
 #SBATCH --partition=gpu
 
 echo "=========================================="
@@ -31,16 +31,13 @@ nvidia-smi
 # Change to project directory
 cd $SLURM_SUBMIT_DIR
 
-PP=1.0
+PP=0.1
 
 # Run training with unbuffered output
 python -u scripts/train.py \
     --config configs/base_config.yml \
-    --color_dir "${COLOR_DIR:-data/preprocessed/color_images}" \
-    --lines_dir "${LINES_DIR:-data/preprocessed/line_drawings}" \
-    --output_dir "checkpoints/p${PP}" \
+    --output_dir "checkpoints/imagenet100-DINO/p${PP}" \
     --patch_percentage "$PP" \
-    --epochs 100
 
 mamba deactivate
 

@@ -52,7 +52,7 @@ class PatchImportanceScorer(nn.Module):
         # Stack to (B, 2)
         return torch.cat([cog_y, cog_x], dim=1)
     
-    def forward(self, line_drawing: torch.Tensor) -> torch.Tensor:
+    def forward(self, line_drawing: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Compute importance scores for each patch.
         
@@ -62,7 +62,8 @@ class PatchImportanceScorer(nn.Module):
                          more line content
         
         Returns:
-            Patch scores of shape (B, num_patches), where num_patches = (H/P) * (W/P)
+            Patch scores of shape (B, num_patches), where num_patches = (H/P) * (W/P),
+            and centers of gravity of shape (B, 2).
         """
         if line_drawing.dim() != 4:
             raise ValueError(f"Expected 4D input (B, C, H, W), got shape {line_drawing.shape}")
