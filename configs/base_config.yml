@@ -12,9 +12,9 @@ data:
   preprocessed_root: null 
   color_dir: "/lab_data/leelab/VLA-Husain-Tianqin/magno_stream_encoder/data/imagenet-100"
   line_drawings:
-    mode: "none"           # "runtime" to generate on the fly
-    checkpoint_path: null  # required when mode == "runtime"
-    device: "cpu"          # "cpu" or "cuda"
+    mode: "runtime"           # "runtime" to generate on the fly
+    checkpoint_path: "/lab_data/leelab/VLA-Husain-Tianqin/magno_stream_encoder/checkpoints/informative-drawings/opensketch_style/netG_A_latest.pth"
+    device: "cuda"          # "cpu" or "cuda"
     size: 64               # must match model.ld_img_size
     invert: false
     threshold: null
@@ -57,12 +57,6 @@ training:
       contrast: 0.2
       saturation: 0.1
       hue: 0.0
-
-# Preprocessing settings
-preprocessing:
-  line_drawing_style: "opensketch_style"
-  magno_size: 64
-  color_size: 256
 
 # Output directories
 output:
