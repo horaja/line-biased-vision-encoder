@@ -14,7 +14,7 @@ data:
   line_drawings:
     mode: "runtime"           # "runtime" to generate on the fly
     checkpoint_path: "/lab_data/leelab/VLA-Husain-Tianqin/magno_stream_encoder/checkpoints/informative-drawings/opensketch_style/netG_A_latest.pth"
-    device: "cuda"          # "cpu" or "cuda"
+    device: "cpu"          # "cpu" or "cuda"
     size: 64               # must match model.ld_img_size
     invert: false
     threshold: null
