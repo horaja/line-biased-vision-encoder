@@ -10,7 +10,7 @@ experiment:
 data:
   raw_root: null
   preprocessed_root: null 
-  color_dir: /lab_data/leelab/VLA-Husain-Tianqin/magno_stream_encoder/data/preprocessed/color_images
+  color_dir: /lab_data/leelab/VLA-Husain-Tianqin/magno_stream_encoder/data/imagenet-100
   line_drawings:
     mode: "runtime"           # "runtime" to generate on the fly
     checkpoint_path: "/lab_data/leelab/VLA-Husain-Tianqin/magno_stream_encoder/checkpoints/informative-drawings/opensketch_style/netG_A_latest.pth"
