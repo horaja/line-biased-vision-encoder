@@ -19,6 +19,7 @@ from selective_magno_vit.training.trainer import Trainer
 from selective_magno_vit.data.dataset import get_dataloaders
 from selective_magno_vit.models.selective_vit import SelectiveMagnoViT
 from selective_magno_vit.utils.logging import setup_logging
+from selective_magno_vit.utils.config_validation import validate_config
 
 
 def parse_args():
@@ -33,11 +34,6 @@ def parse_args():
         "--color_dir",
         type=str,
         help="Override color image directory"
-    )
-    parser.add_argument(
-        "--lines_dir",
-        type=str,
-        help="Override line drawing directory"
     )
     parser.add_argument(
         "--output_dir",
@@ -76,8 +72,6 @@ def main():
     # Override with command line arguments
     if args.color_dir:
         config.set('data.color_dir', args.color_dir)
-    if args.lines_dir:
-        config.set('data.lines_dir', args.lines_dir)
     if args.output_dir:
         config.set('output.checkpoint_dir', args.output_dir)
         run_name = Path(args.output_dir).name
@@ -88,6 +82,8 @@ def main():
         config.set('training.batch_size', args.batch_size)
     if args.epochs:
         config.set('training.epochs', args.epochs)
+
+    validate_config(config)
     
     # Setup logging
     logger = setup_logging(
@@ -104,8 +100,8 @@ def main():
     logger.info(f"Using device: {device}")
     
     # Create dataloaders
-    train_loader, val_loader = get_dataloaders(config)
-    num_classes = train_loader.dataset.num_classes
+    train_loader, val_loader, test_loader = get_dataloaders(config)
+    num_classes = train_loader.dataset.dataset.num_classes if isinstance(train_loader.dataset, torch.utils.data.Subset) else train_loader.dataset.num_classes
     logger.info(f"Number of classes: {num_classes}")
     logger.info(f"Training samples: {len(train_loader.dataset)}")
     logger.info(f"Validation samples: {len(val_loader.dataset)}")
@@ -122,36 +118,36 @@ def main():
         selector_config=config.get('model.selector')
     ).to(device)
     
-    # =========================================================
-    # START: Freeze layers for fine-tuning
-    # =========================================================
-    logger.info("Freezing backbone layers for fine-tuning...")
+    # # =========================================================
+    # # START: Freeze layers for fine-tuning
+    # # =========================================================
+    # logger.info("Freezing backbone layers for fine-tuning...")
     
-    # 1. First, freeze the entire model
-    for param in model.parameters():
-        param.requires_grad = False
+    # # 1. First, freeze the entire model
+    # for param in model.parameters():
+    #     param.requires_grad = False
         
-    # 2. Unfreeze the Classification Head (New/Randomly initialized)
-    for param in model.vit.head.parameters():
-        param.requires_grad = True
+    # # 2. Unfreeze the Classification Head (New/Randomly initialized)
+    # for param in model.vit.head.parameters():
+    #     param.requires_grad = True
         
-    # 3. Unfreeze Positional Embeddings (New/Randomly initialized)
-    model.vit.pos_embed.requires_grad = True
+    # # 3. Unfreeze Positional Embeddings (New/Randomly initialized)
+    # model.vit.pos_embed.requires_grad = True
     
-    # 4. Unfreeze Patch Embeddings (New/Randomly initialized)
-    # You must train this because you replaced the layer in __init__
-    for param in model.vit.patch_embed.parameters():
-        param.requires_grad = True
+    # # 4. Unfreeze Patch Embeddings (New/Randomly initialized)
+    # # You must train this because you replaced the layer in __init__
+    # for param in model.vit.patch_embed.parameters():
+    #     param.requires_grad = True
 
-    # 5. Unfreeze Normalization Layer (Recommended)
-    # This helps adapt the frozen features to your specific dataset stats
-    for param in model.vit.norm.parameters():
-        param.requires_grad = True
+    # # 5. Unfreeze Normalization Layer (Recommended)
+    # # This helps adapt the frozen features to your specific dataset stats
+    # for param in model.vit.norm.parameters():
+    #     param.requires_grad = True
         
-    # Note: model.scorer and model.selector have no trainable parameters
-    # =========================================================
-    # END: Freeze layers
-    # =========================================================
+    # # Note: model.scorer and model.selector have no trainable parameters
+    # # =========================================================
+    # # END: Freeze layers
+    # # =========================================================
 
     # Log the parameter counts to confirm
     total_params = sum(p.numel() for p in model.parameters())

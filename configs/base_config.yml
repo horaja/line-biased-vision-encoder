@@ -8,30 +8,38 @@ experiment:
 # Data paths - these will be overridden by environment variables or CLI args
 # NOTE: Update these paths to absolute paths for your cluster setup
 data:
-  raw_root: "/lab_data/leelab/VLA-Husain-Tianqin/magno_stream_encoder/data/raw_dataset"
-  preprocessed_root: "/lab_data/leelab/VLA-Husain-Tianqin/magno_stream_encoder/data/preprocessed"
-  lines_dir: "${data.preprocessed_root}/line_drawings"
-  color_dir: "${data.preprocessed_root}/color_images"
+  raw_root: null
+  preprocessed_root: null 
+  color_dir: /lab_data/leelab/VLA-Husain-Tianqin/magno_stream_encoder/data/imagenet-100
+  line_drawings:
+    mode: "runtime"           # "runtime" to generate on the fly
+    checkpoint_path: "/lab_data/leelab/VLA-Husain-Tianqin/magno_stream_encoder/checkpoints/informative-drawings/opensketch_style/netG_A_latest.pth"
+    device: "cpu"          # "cpu" or "cuda"
+    size: 64               # must match model.ld_img_size
+    invert: false
+    threshold: null
+    clamp: true
+    n_residual_blocks: 3   # matches pretrained informative-drawings generator
 
 # Model architecture
 model:
-  patch_percentage: 0.1
+  patch_percentage: 1.0
   color_img_size: 256
   ld_img_size: 64
   color_patch_size: 16
   ld_patch_size: 4
   num_classes: 10
-  vit_model_name: "vit_tiny_patch16_224.augreg_in21k"
+  vit_model_name: "vit_tiny_patch16_224.augreg_in21k" # for dino: "vit_small_patch16_224.dino"
   pretrained: true
   # Patch selector parameters
   selector:
     gaussian_std: 0.25
-    strategy: 'smart'
+    strategy: 'random'
 
 # Training hyperparameters
 training:
   epochs: 100
-  batch_size: 32
+  batch_size: 64
   learning_rate: 1.0e-4
   weight_decay: 0.01
   patience: 20
@@ -49,12 +57,6 @@ training:
       contrast: 0.2
       saturation: 0.1
       hue: 0.0
-
-# Preprocessing settings
-preprocessing:
-  line_drawing_style: "opensketch_style"
-  magno_size: 64
-  color_size: 256
 
 # Output directories
 output:

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Visualization script for SelectiveMagnoViT results.
+Updated for Standard ImageNet-100 workflow.
 """
 
 import argparse
@@ -10,7 +11,7 @@ from pathlib import Path
 
 import torch
 import numpy as np
-from torch.utils.data import DataLoader
+# remove explicit DataLoader import as we use get_dataloaders
 from torchvision import transforms
 
 # Add project root to path
@@ -19,13 +20,15 @@ sys.path.insert(0, str(project_root))
 
 from selective_magno_vit.utils.config import Config
 from selective_magno_vit.models.selective_vit import SelectiveMagnoViT
-from selective_magno_vit.data.dataset import ImageNetteDataset
+# CHANGED: Import get_dataloaders instead of ImageNetteDataset
+from selective_magno_vit.data.dataset import get_dataloaders
 from selective_magno_vit.evaluation.visualizer import (
     PatchSelectionVisualizer,
     plot_confusion_matrix,
     plot_per_class_performance
 )
 from selective_magno_vit.utils.checkpointing import load_checkpoint
+from selective_magno_vit.utils.config_validation import validate_config
 
 
 def parse_args():
@@ -53,15 +56,10 @@ def parse_args():
         help="Override color image directory"
     )
     parser.add_argument(
-        "--lines_dir",
-        type=str,
-        help="Override line drawing directory"
-    )
-    parser.add_argument(
         "--split",
         type=str,
         default="val",
-        help="Dataset split"
+        help="Dataset split (train, val, or test)"
     )
     parser.add_argument(
         "--output_dir",
@@ -113,8 +111,8 @@ def main():
     # Override with command line arguments
     if args.color_dir:
         config.set('data.color_dir', args.color_dir)
-    if args.lines_dir:
-        config.set('data.lines_dir', args.lines_dir)
+
+    validate_config(config)
 
     # Setup output directory
     output_dir = Path(args.output_dir)
@@ -125,30 +123,37 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    # Load dataset
-    val_transform = transforms.Compose([
-        transforms.Resize((config.get('model.color_img_size'), config.get('model.color_img_size'))),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
+    # CHANGED: Use get_dataloaders to ensure consistency with evaluation
+    print("Initializing dataloaders...")
+    
+    # Force batch size to 1 for visualization (easier processing)
+    config.set('training.batch_size', 1)
+    
+    train_loader, val_loader, test_loader = get_dataloaders(config)
 
-    dataset = ImageNetteDataset(
-        color_root=config.get('data.color_dir'),
-        lines_root=config.get('data.lines_dir'),
-        split=args.split,
-        transform=val_transform
-    )
+    # Select the requested loader
+    if args.split == 'train':
+        dataloader = train_loader
+        print("Selected: Training Subset")
+    elif args.split == 'val':
+        dataloader = val_loader
+        print("Selected: Validation Subset")
+    else: # test
+        dataloader = test_loader
+        print("Selected: Held-Out Test Set")
 
-    dataloader = DataLoader(
-        dataset,
-        batch_size=1,  # Use batch size 1 for visualization
-        shuffle=False,
-        num_workers=2,
-        pin_memory=True
-    )
-
-    num_classes = dataset.num_classes
-    print(f"Dataset: {len(dataset)} samples, {num_classes} classes")
+    # Access the underlying dataset to get class info
+    # Handle Subset wrappers if present (Logic copied from evaluate.py)
+    if hasattr(dataloader.dataset, 'dataset'):
+        full_ds = dataloader.dataset.dataset
+    else:
+        full_ds = dataloader.dataset
+        
+    num_classes = full_ds.num_classes
+    # CHANGED: Use .classes (from ImageFolder) instead of .class_names
+    class_names = full_ds.classes
+    
+    print(f"Dataset: {len(dataloader.dataset)} samples, {num_classes} classes")
 
     # Create model
     model = SelectiveMagnoViT(
@@ -194,7 +199,7 @@ def main():
         # Non-normalized
         plot_confusion_matrix(
             confusion_matrix,
-            dataset.class_names,
+            class_names, # CHANGED: Use extracted class_names variable
             save_path=output_dir / "confusion_matrix.png",
             show=False,
             normalize=False
@@ -203,7 +208,7 @@ def main():
         # Normalized
         plot_confusion_matrix(
             confusion_matrix,
-            dataset.class_names,
+            class_names, # CHANGED: Use extracted class_names variable
             save_path=output_dir / "confusion_matrix_normalized.png",
             show=False,
             normalize=True
@@ -215,12 +220,13 @@ def main():
         print("\nGenerating per-class performance visualization...")
         per_class_metrics = results['per_class_metrics']
 
-        class_names = [m['class'] for m in per_class_metrics]
+        # Extract names/scores from results JSON
+        res_class_names = [m['class'] for m in per_class_metrics]
         accuracies = [m['accuracy'] for m in per_class_metrics]
         f1_scores = [m['f1_score'] for m in per_class_metrics]
 
         plot_per_class_performance(
-            class_names,
+            res_class_names,
             accuracies,
             f1_scores,
             save_path=output_dir / "per_class_performance.png",

@@ -14,7 +14,8 @@ dependencies:
   - tensorboard
   - pillow
   - opencv
-  - scikit-learn 
+  - scikit-learn
+  - pytest
   - pip:
     - oyaml
     - dominate

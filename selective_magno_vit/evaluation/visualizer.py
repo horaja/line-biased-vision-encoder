@@ -31,7 +31,7 @@ class PatchSelectionVisualizer:
     def visualize_patch_selection(
         self,
         color_image: torch.Tensor,
-        line_drawing: torch.Tensor,
+        line_drawing: Optional[torch.Tensor], # Changed type hint
         save_path: Optional[str] = None,
         show: bool = True
     ):
@@ -40,26 +40,32 @@ class PatchSelectionVisualizer:
 
         Args:
             color_image: Color image tensor (1, 3, H, W)
-            line_drawing: Line drawing tensor (1, 1, H, W)
+            line_drawing: Line drawing tensor (1, 1, H, W) or None
             save_path: Path to save figure (optional)
             show: Whether to show the figure
         """
         # Get model predictions
         color_image = color_image.to(self.device)
-        line_drawing = line_drawing.to(self.device)
+        
+        # CHANGED: Handle None line_drawing
+        if line_drawing is not None:
+            line_drawing = line_drawing.to(self.device)
+            # Get importance scores only if line drawing exists
+            patch_scores, patch_centers = self.model.scorer(line_drawing)
+            scores_np = patch_scores[0].cpu().numpy()
+            centers_np = patch_centers[0].cpu().numpy()
+            line_np = line_drawing[0, 0].cpu().numpy()
+        else:
+            scores_np = None
+            centers_np = None
+            line_np = None
 
-        # Get selected patch indices
-        selected_indices = self.model.get_selected_patch_indices(line_drawing)
-
-        # Get importance scores
-        patch_scores, patch_centers = self.model.scorer(line_drawing)
+        # Get selected patch indices (works with None if random/supported, passing color_image)
+        selected_indices = self.model.get_selected_patch_indices(line_drawing, color_image)
 
         # Convert to numpy for plotting
         color_np = color_image[0].cpu().permute(1, 2, 0).numpy()
-        line_np = line_drawing[0, 0].cpu().numpy()
         selected_indices_np = selected_indices[0].cpu().numpy()
-        scores_np = patch_scores[0].cpu().numpy()
-        centers_np = patch_centers[0].cpu().numpy()
 
         # Denormalize color image for visualization
         mean = np.array([0.485, 0.456, 0.406])
@@ -72,12 +78,6 @@ class PatchSelectionVisualizer:
         color_patch_size = self.model.color_patch_size
         num_color_patches_per_side = color_img_size // color_patch_size
 
-        line_img_size = line_np.shape[0]
-        line_patch_size = self.model.ld_patch_size
-        num_line_patches_per_side = line_img_size // line_patch_size
-        # Reshape scores to 2D grid
-        scores_2d = scores_np.reshape(num_line_patches_per_side, num_line_patches_per_side)
-
         # Create figure
         fig = plt.figure(figsize=(16, 4))
         gs = GridSpec(1, 4, figure=fig, wspace=0.3)
@@ -88,18 +88,31 @@ class PatchSelectionVisualizer:
         ax1.set_title("Color Image")
         ax1.axis('off')
 
-        # 2. Line drawing
+        # 2. Line drawing (Handle None)
         ax2 = fig.add_subplot(gs[1])
-        ax2.imshow(line_np, cmap='gray')
-        ax2.set_title("Line Drawing")
+        if line_np is not None:
+            ax2.imshow(line_np, cmap='gray')
+            ax2.set_title("Line Drawing")
+        else:
+            ax2.text(0.5, 0.5, "Not Available", ha='center', va='center')
+            ax2.set_title("Line Drawing (None)")
         ax2.axis('off')
 
-        # 3. Patch importance scores
+        # 3. Patch importance scores (Handle None)
         ax3 = fig.add_subplot(gs[2])
-        im = ax3.imshow(scores_2d, cmap='hot', interpolation='nearest')
-        ax3.set_title("Patch Importance Scores")
+        if scores_np is not None:
+            line_patch_size = self.model.ld_patch_size
+            line_img_size = 256 if line_np is None else line_np.shape[0] # Fallback size
+            if line_np is not None:
+                num_line_patches_per_side = line_img_size // line_patch_size
+                scores_2d = scores_np.reshape(num_line_patches_per_side, num_line_patches_per_side)
+                im = ax3.imshow(scores_2d, cmap='hot', interpolation='nearest')
+                plt.colorbar(im, ax=ax3, fraction=0.046)
+            ax3.set_title("Patch Importance Scores")
+        else:
+            ax3.text(0.5, 0.5, "Random/None", ha='center', va='center')
+            ax3.set_title("Importance Scores")
         ax3.axis('off')
-        plt.colorbar(im, ax=ax3, fraction=0.046)
 
         # 4. Selected patches overlay
         ax4 = fig.add_subplot(gs[3])
@@ -125,31 +138,33 @@ class PatchSelectionVisualizer:
             )
             ax4.add_patch(rect)
 
-        # cog_np is [y, x] in normalized coordinates [0, 1]
-        cog_y_norm, cog_x_norm = centers_np
-        
-        # Map to Color Image patch grid indices
-        cog_patch_row = int(cog_y_norm * num_color_patches_per_side)
-        cog_patch_col = int(cog_x_norm * num_color_patches_per_side)
-        
-        # Clamp to ensure it stays within bounds
-        cog_patch_row = max(0, min(cog_patch_row, num_color_patches_per_side - 1))
-        cog_patch_col = max(0, min(cog_patch_col, num_color_patches_per_side - 1))
-        
-        # Calculate pixel coordinates for the CoG rect
-        cog_rect_y = cog_patch_row * color_patch_size
-        cog_rect_x = cog_patch_col * color_patch_size
-        
-        cog_rect = patches.Rectangle(
-            (cog_rect_x - 0.5, cog_rect_y - 0.5),
-            color_patch_size,
-            color_patch_size,
-            linewidth=3,        # Thicker
-            edgecolor='red',    # Distinct color (Red)
-            facecolor='none',
-            linestyle='--'      # Dashed style
-        )
-        ax4.add_patch(cog_rect)
+        # COG visualization (only if we have centers)
+        if centers_np is not None:
+            # cog_np is [y, x] in normalized coordinates [0, 1]
+            cog_y_norm, cog_x_norm = centers_np
+            
+            # Map to Color Image patch grid indices
+            cog_patch_row = int(cog_y_norm * num_color_patches_per_side)
+            cog_patch_col = int(cog_x_norm * num_color_patches_per_side)
+            
+            # Clamp to ensure it stays within bounds
+            cog_patch_row = max(0, min(cog_patch_row, num_color_patches_per_side - 1))
+            cog_patch_col = max(0, min(cog_patch_col, num_color_patches_per_side - 1))
+            
+            # Calculate pixel coordinates for the CoG rect
+            cog_rect_y = cog_patch_row * color_patch_size
+            cog_rect_x = cog_patch_col * color_patch_size
+            
+            cog_rect = patches.Rectangle(
+                (cog_rect_x - 0.5, cog_rect_y - 0.5),
+                color_patch_size,
+                color_patch_size,
+                linewidth=3,        # Thicker
+                edgecolor='red',    # Distinct color (Red)
+                facecolor='none',
+                linestyle='--'      # Dashed style
+            )
+            ax4.add_patch(cog_rect)
 
         num_selected = len(selected_indices_np)
         total_patches = num_color_patches_per_side ** 2
@@ -193,7 +208,11 @@ class PatchSelectionVisualizer:
                 break
             
             color_images = batch['color_image']
+            
+            # CHANGED: Handle None line drawings (Dataset level)
             line_drawings = batch['line_drawing']
+            # line_drawings is None if the dataset returns None for all items
+            
             labels = batch['label']
 
             batch_size = color_images.size(0)
@@ -202,9 +221,12 @@ class PatchSelectionVisualizer:
                 if save_dir:
                     save_path = save_dir / f"patch_selection_sample_{samples_visualized:03d}.png"
 
+                # CHANGED: Pass None if batch line_drawings is None
+                ld_sample = line_drawings[i:i+1] if line_drawings is not None else None
+
                 self.visualize_patch_selection(
                     color_images[i:i+1],
-                    line_drawings[i:i+1],
+                    ld_sample,
                     save_path=save_path,
                     show=False
                 )

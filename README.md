@@ -10,7 +10,6 @@ TL;DR: Line drawings guide a Vision Transformer model to keep only the most info
 ```bash
 mamba env create -f environment.yml  # creates the vla env
 mamba activate vla
-git submodule update --init --recursive  # pulls informative-drawings
 pip install -e .
 ```
 
@@ -67,19 +66,12 @@ graph LR;
 ```
 
 ## Train / evaluate locally (needs data)
-- Preprocess (requires GPU and the `third_party/informative-drawings` submodule):
-  ```bash
-  python scripts/preprocess.py \
-    --config configs/base_config.yml \
-    --raw_data_root <raw_imagenette_or_imagenet100> \
-    --preprocessed_root data/preprocessed
-  ```
+- Runtime line drawings are generated on the fly (defaults in `configs/base_config.yml`); set `data.line_drawings.checkpoint_path` to your Generator weights and point `data.color_dir` to an ImageNet-style `train/` + `val/` tree.
 - Train (example, patch_percentage 0.4):
   ```bash
   python scripts/train.py \
     --config configs/base_config.yml \
-    --color_dir data/preprocessed/color_images \
-    --lines_dir data/preprocessed/line_drawings \
+    --color_dir /path/to/imagenet-100 \
     --output_dir checkpoints/local_p0.4 \
     --patch_percentage 0.4 \
     --epochs 5 \
@@ -90,8 +82,7 @@ graph LR;
   python scripts/evaluate.py \
     --config configs/base_config.yml \
     --checkpoint checkpoints/local_p0.4/best_model.pth \
-    --color_dir data/preprocessed/color_images \
-    --lines_dir data/preprocessed/line_drawings \
+    --color_dir /path/to/imagenet-100 \
     --split val \
     --output_dir results/local_eval_p0.4 \
     --analyze_patches

@@ -2,7 +2,7 @@ import os
 import json
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
+# import seaborn as sns  <-- Removed to prevent import hangs
 
 # --- 1. Silent Parsing Logic ---
 def parse_evaluation_results(root_dir="results"):
@@ -20,7 +20,7 @@ def parse_evaluation_results(root_dir="results"):
                 # Path parsing
                 experiment_id = os.path.basename(current_folder)
                 parent_folder = os.path.dirname(current_folder)
-                method = os.path.basename(parent_folder) # 'smart' or 'random'
+                method = os.path.basename(parent_folder) # e.g., 'imagenet100-random'
 
                 if not experiment_id.startswith("eval_"):
                     continue
@@ -76,14 +76,13 @@ def plot_icml_style(df, output_dir="results"):
     df['Accuracy (%)'] = df['accuracy'] * 100
 
     # Define styles
-    # Mapping: smart -> Ours, random -> Random
+    # Mapping the specific directory name to the 'Random' label
     styles = {
-        'noft':  {'color': 'black', 'ls': '-',  'marker': 'o', 'label': 'No FT'},
-        'noft-random': {'color': 'grey',  'ls': '--', 'marker': '',  'label': 'Random'}
+        'imagenet100-random': {'color': 'grey',  'ls': '--', 'marker': '',  'label': 'Random'}
     }
 
-    # Plot
-    for method in ['noft', 'noft-random']:
+    # Plot only the relevant method found in the specific directory
+    for method in ['imagenet100-random']:
         subset = df[df['method'] == method]
         
         # Sort so lines connect properly
@@ -118,8 +117,9 @@ def plot_icml_style(df, output_dir="results"):
     # Legend
     plt.legend(frameon=True, fancybox=False, edgecolor='black')
     
-    # Clean spines
-    sns.despine()
+    # Clean spines (Matplotlib alternative to sns.despine)
+    plt.gca().spines['top'].set_visible(False)
+    plt.gca().spines['right'].set_visible(False)
 
     # 3. Save to results folder
     plt.tight_layout()
@@ -133,10 +133,12 @@ def plot_icml_style(df, output_dir="results"):
 
 # --- Execution ---
 if __name__ == "__main__":
-    target_dir = "results"
+    # Pointing specifically to the random results directory
+    target_dir = "results/imagenet100-random"
+    
     df = parse_evaluation_results(target_dir)
     
     if not df.empty:
         plot_icml_style(df, output_dir=target_dir)
     else:
-        print("No valid data found.")
+        print(f"No valid data found in {target_dir}.")

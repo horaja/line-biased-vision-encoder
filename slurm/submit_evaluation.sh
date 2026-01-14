@@ -43,20 +43,19 @@ echo "Evaluating checkpoint: $CHECKPOINT"
 
 # Create unique output directory for this evaluation run
 CHECKPOINT_NAME=$(basename "$CHECKPOINT" .pth)
-SPLIT_NAME="${SPLIT:-val}"
+SPLIT_NAME="${SPLIT:-test}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-RUN_DIR="results/eval_${CHECKPOINT_NAME}_${SPLIT_NAME}_${TIMESTAMP}"
+RUN_DIR="results/test-run/eval_${CHECKPOINT_NAME}_${SPLIT_NAME}_${TIMESTAMP}"
 
 echo "Results will be saved to: $RUN_DIR"
 mkdir -p "$RUN_DIR"
 
 # Run evaluation
 echo "Running evaluation..."
+# CHANGED: Removed --color_dir and --lines_dir (not supported by evaluate.py, driven by config)
 python scripts/evaluate.py \
     --config configs/base_config.yml \
     --checkpoint "$CHECKPOINT" \
-    --color_dir "${COLOR_DIR:-data/preprocessed/color_images}" \
-    --lines_dir "${LINES_DIR:-data/preprocessed/line_drawings}" \
     --split "$SPLIT_NAME" \
     --output_dir "$RUN_DIR" \
     --analyze_patches \
@@ -79,12 +78,11 @@ else
     echo "Generating visualizations..."
     echo "=========================================="
 
+    # CHANGED: Removed --color_dir and --lines_dir (prevents overwriting config with defaults)
     python scripts/visualize_results.py \
         --config configs/base_config.yml \
         --checkpoint "$CHECKPOINT" \
         --results_file "$RESULTS_FILE" \
-        --color_dir "${COLOR_DIR:-data/preprocessed/color_images}" \
-        --lines_dir "${LINES_DIR:-data/preprocessed/line_drawings}" \
         --split "$SPLIT_NAME" \
         --output_dir "$RUN_DIR/visualizations" \
         --all \
