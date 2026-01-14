@@ -22,6 +22,7 @@ from selective_magno_vit.data.dataset import get_dataloaders
 from selective_magno_vit.evaluation.evaluator import ModelEvaluator
 from selective_magno_vit.utils.logging import setup_logging
 from selective_magno_vit.utils.checkpointing import load_checkpoint
+from selective_magno_vit.utils.config_validation import validate_config
 
 
 def parse_args():
@@ -79,6 +80,8 @@ def main():
         config.set('training.batch_size', args.batch_size)
     if args.output_dir:
         config.set('output.results_dir', args.output_dir)
+
+    validate_config(config)
 
     # Setup logging
     logger = setup_logging(

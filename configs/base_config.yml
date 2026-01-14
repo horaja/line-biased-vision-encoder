@@ -10,8 +10,16 @@ experiment:
 data:
   raw_root: null
   preprocessed_root: null 
-  lines_dir: null 
   color_dir: "/lab_data/leelab/VLA-Husain-Tianqin/magno_stream_encoder/data/imagenet-100"
+  line_drawings:
+    mode: "none"           # "runtime" to generate on the fly
+    checkpoint_path: null  # required when mode == "runtime"
+    device: "cpu"          # "cpu" or "cuda"
+    size: 64               # must match model.ld_img_size
+    invert: false
+    threshold: null
+    clamp: true
+    n_residual_blocks: 3   # matches pretrained informative-drawings generator
 
 # Model architecture
 model:

@@ -24,18 +24,20 @@ class Config:
     
     def _resolve_paths(self):
         """Resolve relative paths and environment variables."""
-        # Allow environment variable overrides
+        def _expand(value, scope: Dict[str, Any]):
+            if isinstance(value, str):
+                value = os.path.expandvars(value)
+                for replace_key, replace_val in scope.items():
+                    if isinstance(replace_val, (str, int, float)):
+                        value = value.replace(f"${{{replace_key}}}", str(replace_val))
+                return value
+            if isinstance(value, dict):
+                return {k: _expand(v, value) for k, v in value.items()}
+            return value
+
         for section in ['data', 'output']:
-            if section in self.config:
-                for key, value in self.config[section].items():
-                    if isinstance(value, str):
-                        # Resolve environment variables
-                        value = os.path.expandvars(value)
-                        # Resolve ${key} references within config
-                        while '${' in value:
-                            for replace_key, replace_val in self.config[section].items():
-                                value = value.replace(f'${{{section}.{replace_key}}}', str(replace_val))
-                        self.config[section][key] = value
+            if section in self.config and isinstance(self.config[section], dict):
+                self.config[section] = _expand(self.config[section], self.config[section])
     
     def get(self, key: str, default=None):
         """Get configuration value by dot-notation key."""

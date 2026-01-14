@@ -19,6 +19,7 @@ from selective_magno_vit.training.trainer import Trainer
 from selective_magno_vit.data.dataset import get_dataloaders
 from selective_magno_vit.models.selective_vit import SelectiveMagnoViT
 from selective_magno_vit.utils.logging import setup_logging
+from selective_magno_vit.utils.config_validation import validate_config
 
 
 def parse_args():
@@ -33,11 +34,6 @@ def parse_args():
         "--color_dir",
         type=str,
         help="Override color image directory"
-    )
-    parser.add_argument(
-        "--lines_dir",
-        type=str,
-        help="Override line drawing directory"
     )
     parser.add_argument(
         "--output_dir",
@@ -76,8 +72,6 @@ def main():
     # Override with command line arguments
     if args.color_dir:
         config.set('data.color_dir', args.color_dir)
-    if args.lines_dir:
-        config.set('data.lines_dir', args.lines_dir)
     if args.output_dir:
         config.set('output.checkpoint_dir', args.output_dir)
         run_name = Path(args.output_dir).name
@@ -88,6 +82,8 @@ def main():
         config.set('training.batch_size', args.batch_size)
     if args.epochs:
         config.set('training.epochs', args.epochs)
+
+    validate_config(config)
     
     # Setup logging
     logger = setup_logging(

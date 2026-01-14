@@ -28,6 +28,7 @@ from selective_magno_vit.evaluation.visualizer import (
     plot_per_class_performance
 )
 from selective_magno_vit.utils.checkpointing import load_checkpoint
+from selective_magno_vit.utils.config_validation import validate_config
 
 
 def parse_args():
@@ -53,11 +54,6 @@ def parse_args():
         "--color_dir",
         type=str,
         help="Override color image directory"
-    )
-    parser.add_argument(
-        "--lines_dir",
-        type=str,
-        help="Override line drawing directory"
     )
     parser.add_argument(
         "--split",
@@ -115,8 +111,8 @@ def main():
     # Override with command line arguments
     if args.color_dir:
         config.set('data.color_dir', args.color_dir)
-    if args.lines_dir:
-        config.set('data.lines_dir', args.lines_dir)
+
+    validate_config(config)
 
     # Setup output directory
     output_dir = Path(args.output_dir)
