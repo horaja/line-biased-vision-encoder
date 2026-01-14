@@ -10,7 +10,7 @@
 #SBATCH --time=00:20:00
 #SBATCH --partition=cpu
 
-set -euo pipefail
+set -eo pipefail
 
 echo "=========================================="
 echo "SLURM Pytest Job"
@@ -24,14 +24,13 @@ mkdir -p logs/slurm
 
 # Activate environment
 eval "$(mamba shell hook --shell bash)"
-# mamba env update -f environment.yml 2>/dev/null || mamba env create -f environment.yml -y
 mamba activate vla
 
 # Move to repo root
 cd "$SLURM_SUBMIT_DIR"
 
 echo "Running pytest (runtime line drawing suite)..."
-pytest tests/test_line_drawings.py tests/test_dataset_runtime.py -v --maxfail=1 --disable-warnings
+python -m pytest tests/test_line_drawings.py tests/test_dataset_runtime.py -v --maxfail=1 --disable-warnings
 
 echo "=========================================="
 echo "Pytest completed at $(date)"
