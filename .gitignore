@@ -25,9 +25,9 @@ wheels/
 *.pt
 *.ckpt
 
-# Data
+# Data (limit to top-level to avoid ignoring code under selective_magno_vit/data)
 datasets/
-data/
+/data/
 *.jpg
 *.jpeg
 *.JPEG
