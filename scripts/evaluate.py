@@ -52,6 +52,11 @@ def parse_args():
         help="Override batch size"
     )
     parser.add_argument(
+        "--patch_percentage",
+        type=float,
+        help="Override patch percentage used for patch selection"
+    )
+    parser.add_argument(
         "--output_dir",
         type=str,
         help="Directory to save evaluation results"
@@ -78,6 +83,8 @@ def main():
     # Override with command line arguments
     if args.batch_size:
         config.set('training.batch_size', args.batch_size)
+    if args.patch_percentage is not None:
+        config.set('model.patch_percentage', args.patch_percentage)
     if args.output_dir:
         config.set('output.results_dir', args.output_dir)
 

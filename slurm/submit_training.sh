@@ -31,12 +31,12 @@ nvidia-smi
 # Change to project directory
 cd $SLURM_SUBMIT_DIR
 
-PP=0.1
+PP=1.0
 
 # Run training with unbuffered output
 python -u scripts/train.py \
     --config configs/base_config.yml \
-    --output_dir "checkpoints/imagenet100-DINO/p${PP}" \
+    --output_dir "checkpoints/imagenet100-smart/p${PP}" \
     --patch_percentage "$PP" \
 
 mamba deactivate

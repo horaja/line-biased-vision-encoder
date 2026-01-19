@@ -41,6 +41,13 @@ fi
 
 echo "Evaluating checkpoint: $CHECKPOINT"
 
+# Optional patch percentage override
+PATCH_FLAG=""
+if [ -n "$PATCH_PCT" ]; then
+    echo "Overriding patch percentage to: $PATCH_PCT"
+    PATCH_FLAG="--patch_percentage $PATCH_PCT"
+fi
+
 # Create unique output directory for this evaluation run
 CHECKPOINT_NAME=$(basename "$CHECKPOINT" .pth)
 SPLIT_NAME="${SPLIT:-test}"
@@ -59,6 +66,7 @@ python scripts/evaluate.py \
     --split "$SPLIT_NAME" \
     --output_dir "$RUN_DIR" \
     --analyze_patches \
+    $PATCH_FLAG \
     ${EXTRA_ARGS}
 
 # Check if evaluation succeeded
