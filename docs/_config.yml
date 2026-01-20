@@ -1,3 +1,5 @@
+url: "https://horaja.github.io"
+baseurl: "/line-biased-vision-encoder"
 theme: jekyll-theme-minimal
 markdown: GFM
 title: "Compute-Efficient Vision Encoder"
