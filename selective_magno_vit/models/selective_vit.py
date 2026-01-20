@@ -218,7 +218,11 @@ class SelectiveMagnoViT(nn.Module):
             centers = torch.zeros((B, 2), device=device)
 
         # Get the multinomial sampled indices
-        indices = self.selector.get_indices(patch_scores, centers)
+        indices = self.selector.get_indices(
+            patch_scores,
+            centers,
+            strategy=self.selector.strategy
+        )
 
         return indices
 
